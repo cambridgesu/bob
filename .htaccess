@@ -1,0 +1,20 @@
+# Authentication
+AADescription "Online voting"
+AACookieKey "IFVYWMOSMRelectionName"
+AuthType Ucam-WebAuth
+Require valid-user
+AAForceInteract On
+<Files logout.html>
+	SetHandler AALogout
+</Files>
+
+# Deny technical files being retrieved via a browser
+<Files ".ht*">
+	deny from all
+</Files>
+<Files "dbpass">
+	deny from all
+</Files>
+
+# Directory index to prevent file listings
+DirectoryIndex index.html index.php
