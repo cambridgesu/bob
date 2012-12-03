@@ -1,4 +1,4 @@
-# $Id: electionConfig.pm 120 2007-02-11 16:42:14Z dme26 $
+# $Id: electionConfig.pm 127 2007-02-20 15:39:15Z dme26 $
 # This file is part of BOB: the Basic On-line Ballot-box
 # http://www.cl.cam.ac.uk/~dme26/proj/BOB/
 #####################################################################
@@ -20,11 +20,6 @@ $emailRO='returningOfficer@localhost';
 # Election administrator's email address
 $emailTech='adminperson@localhost';
 
-# Election administrator as referred to via HTML (needs $emailTech defined first)
-$htmlTech=<<EOF;
-<a href="mailto:$emailTech"> technical administrator ($emailTech)</a>
-EOF
-
 # Returning Officer's title
 # (i.e. in the context of "The returning officer is ... ")
 $ro=<<EOF;
@@ -36,11 +31,6 @@ $eofficials='';
 
 # Allow admin operations during an election. (admin_checkcount.php is allowed in any case)
 $adminDuringElectionOK=FALSE;
-
-# Returning officer as referred to via HTML (needs $emailRO defined first)
-$htmlRO=<<EOF;
-<a href="mailto:$emailRO">returning officer ($emailRO)</a>
-EOF
 
 # Start time (YYYY-MM-DD HH:MM)
 $ballotStart = '2005-11-02 00:00';

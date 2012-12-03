@@ -1,5 +1,5 @@
 <!--
-- $Id: BOB.php 121 2007-02-11 20:00:37Z dme26 $
+- $Id: BOB.php 127 2007-02-20 15:39:15Z dme26 $
 -
 - This file is part of the Basic Online Ballot-box (BOB).
 - http://www.cl.cam.ac.uk/~dme26/proj/BOB/
@@ -12,7 +12,6 @@
 -
 - See genElection.pl for installation/configuration details.
 -
-- Called by: vote.php
 - Requires : config.php
 - Uses     : MySQL
 -
@@ -29,7 +28,7 @@
 <?php
 class BOB {
   // constructor
-  function BOB($dbdb,$dbhost,$dbuser,$electionInfo,$emailRO,$emailTech,$ename,$endBallot,$htmlNotRegistered,$htmlPostBallot,$htmlPreBallot,$htmlRO,$htmlTech,$startBallot,$title,$adminDuringElectionOK,$positionInfo) {
+  function BOB($dbdb,$dbhost,$dbuser,$electionInfo,$emailRO,$emailTech,$ename,$endBallot,$htmlNotRegistered,$htmlPostBallot,$htmlPreBallot,$htmlRO,$htmlTech,$startBallot,$title,$adminDuringElectionOK,$positionInfo,$ro) {
     $this->dbdb = $dbdb;
     $this->dbhost = $dbhost;
     $this->dbuser = $dbuser;
@@ -47,6 +46,7 @@ class BOB {
     $this->title = $title;
     $this->adminDuringElectionOK = $adminDuringElectionOK;
     $this->positionInfo = $positionInfo;
+    $this->ro = $ro;
 
     // set a dummy crsid value if the authentication read is unsuccessful
     ($this->crsid = $_SERVER['REMOTE_USER']) or ($this->crsid = "testVoter");
@@ -79,6 +79,36 @@ class BOB {
   function fail($e) { 
     echo $e;
     return false;
+  }
+  
+  // Ballot page
+  function ballotPage(){
+    echo '<form action="vote.php" method="post">' . "\n\n";
+	
+	$i = 0;	// Start a count of vote groups
+	foreach ($this->electionInfo as $options) {	// Loop through each vote group
+		
+		$i++;	// Advance the vote group counter
+		if (!$options) {continue;}	// If the array is empty, move on
+		
+		$selectOpts = "\t\t\t\t\t<option value=\"0\" class=\"blank\">(blank)</option>\n";
+		foreach ($options as $index => $option) {
+			if ($index == 0) {continue;}	// Miss the heading out
+			$selectOpts .= "\t\t\t\t\t<option value=\"{$index}\">{$option}</option>\n";
+		}
+		
+		// Define the number of boxes
+		$boxes = count ($options) - 1;	// Number of options, minus one (the first - which is the heading)
+		
+		// Create the HTML, creating as many boxes as requested
+		echo "<h2>{$options[0]}</h2>\n";
+		echo "<table class=\"vote v{$i}\">\n";
+		echo "\t\t<tr>\n\t\t\t<th>Preference</th>\n\t\t\t<th>Candidate</th>\n\t\t</tr>\n";
+		for ($box = 1; $box <= $boxes; $box++) {
+			echo "\t\t<tr class=\"c{$box} " . (($box % 2) ? 'codd' : 'ceven' ) . "\">\n\t\t\t<td class=\"preference\">{$box}</td>\n\t\t\t<td class=\"candidate\">\n\t\t\t\t<select name=\"v[{$i}][{$box}]\" OnMouseWheel=\"PreventScroll(event);\">\n{$selectOpts}\t\t\t\t</select>\n\t\t\t</td>\n\t\t</tr>\n";
+		}
+		echo "</table>\n\n";
+	}
   }
   
   // public entry point for voting workflow
@@ -581,8 +611,8 @@ EOF;
 }
 
   // initialise all variables (i.e. thwart register_globals attacks)
-  $dbdb=$dbhost=$dbuser=$electionInfo=$emailRO=$emailTech=$ename=$endBallot=$htmlNotRegistered=$htmlPostBallot=$htmlPreBallot=$htmlRO=$htmlTech=$startBallot=$title=$adminDuringElectionOK=$positionInfo='';
+  $dbdb=$dbhost=$dbuser=$electionInfo=$emailRO=$emailTech=$ename=$endBallot=$htmlNotRegistered=$htmlPostBallot=$htmlPreBallot=$htmlRO=$htmlTech=$startBallot=$title=$adminDuringElectionOK=$positionInfo=$ro='';
   require_once("config.php");
-  $bob = new BOB($dbdb,$dbhost,$dbuser,$electionInfo,$emailRO,$emailTech,$ename,$endBallot,$htmlNotRegistered,$htmlPostBallot,$htmlPreBallot,$htmlRO,$htmlTech,$startBallot,$title,$adminDuringElectionOK,$positionInfo);
+  $bob = new BOB($dbdb,$dbhost,$dbuser,$electionInfo,$emailRO,$emailTech,$ename,$endBallot,$htmlNotRegistered,$htmlPostBallot,$htmlPreBallot,$htmlRO,$htmlTech,$startBallot,$title,$adminDuringElectionOK,$positionInfo,$ro);
 
 ?>
