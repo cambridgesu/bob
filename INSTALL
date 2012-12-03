@@ -1,6 +1,7 @@
-# $Id: INSTALL,v 1.2 2005/10/30 01:33:44 dme26 Exp $
+# $Id: INSTALL,v 1.3 2006/10/22 16:54:47 dme26 Exp $
 # 
 # BOB: Basic On-line Ballot-box
+# http://www.cl.cam.ac.uk/~dme26/proj/BOB/
 # Copyright 2005 David Eyers.
 # Released under GPL. See file COPYING for license details.
 # 

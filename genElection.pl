@@ -1,7 +1,8 @@
 #!/usr/bin/perl -w
 
 # This file is part of the Basic On-line Ballot-box (BOB).
-# $Id: genElection.pl,v 1.13 2005/11/01 18:25:01 dme26 Exp $
+# $Id: genElection.pl,v 1.21 2006/11/09 03:03:34 dme26 Exp $
+# http://www.cl.cam.ac.uk/~dme26/proj/BOB/
 #
 # BOB is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -149,8 +150,16 @@ AACookieKey "${ename}$$"
 AADescription "${title}"
 AuthType Ucam-WebAuth
 Require valid-user
-DirectoryIndex index.html index.htm index.php ballot.html				
+DirectoryIndex index.html index.htm index.php ballot.html
+<Files ".ht*">
+  deny from all
+</Files>
 EOF
+    close $f;
+}
+
+if($f=openIfNoFile("dbpass",0660)){
+    print $f $dbpass;
     close $f;
 }
 
@@ -171,42 +180,326 @@ for $i ( 0 .. $#eData ) {
 }
 $electionPHP .= ");\n";
 
-if($f=openIfNoFile("secret.php",0660)){
-
-    # fix quoting for htmlNotRegistered
-    $htmlNotRegistered =~ s/'/'."'".'/go; # '
+if($f=openIfNoFile("config.php")){
     print $f <<EOF;
 <?php 
-\$title = "${title} response";
-\$ename = "${ename}";
-\$emailRO = "${emailRO}";
-\$emailTech = "${emailTech}";
-\$htmlRO = "<a href=\\"mailto:$emailRO\\">returning officer ($emailRO)</a>";
-\$htmlTech = "<a href=\\"mailto:$emailTech\\">technical administrator ($emailTech)</a>";
-\$dbhost = "${dbhost}";
-\$dbuser = "${dbuser}";
-\$dbpass = "${dbpass}";
-\$dbdb = "${dbdb}";
+\$title=<<<EOV
+${title} response
+EOV;
+\$ename=<<<EOV
+${ename}
+EOV;
+\$emailRO="${emailRO}";
+\$emailTech="${emailTech}";
+\$htmlRO=<<<EOV
+<a href="mailto:$emailRO">returning officer ($emailRO)</a>
+EOV;
+\$htmlTech=<<<EOV
+<a href="mailto:$emailTech">technical administrator ($emailTech)</a>
+EOV;
+\$dbhost="${dbhost}";
+\$dbuser="${dbuser}";
+\$dbdb="${dbdb}";
 ${electionPHP}
-\$htmlNotRegistered = '${htmlNotRegistered}';
-\$htmlPreBallot = "${htmlPreBallot}";
-\$htmlPostBallot = "${htmlPostBallot}";
+\$htmlNotRegistered=<<<EOV
+${htmlNotRegistered}
+EOV;
+\$htmlPreBallot=<<<EOV
+${htmlPreBallot}
+EOV;
+\$htmlPostBallot=<<<EOV
+${htmlPostBallot}
+EOV;
 EOF
-    if($ballotStart =~ /(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})/){
+# the 0's in the regexps below combat a PHP bug in mktime. Thanks Simon!
+    if($ballotStart =~ /(\d{4})-0*(\d{1,2})-0*(\d{1,2}) 0*(\d{1,2}):0*(\d{1,2})/){
 	print $f "\$startBallot = mktime($4,$5,0,$2,$3,$1);\n"
     }else{
 	print "! Unable to parse \$ballotStart date.\n";
     }
-    if($ballotEnd =~ /(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})/){
+    if($ballotEnd =~ /(\d{4})-0*(\d{1,2})-0*(\d{1,2}) 0*(\d{1,2}):0*(\d{1,2})/){
 	print $f "\$endBallot = mktime($4,$5,0,$2,$3,$1);\n"
     }else{
 	print "! Unable to parse \$ballotEnd date.\n";
     }
     print $f <<EOF;
+
+// RFC2289 defines a list of words for human-friendly one-time key exchange.
+// Copyright (C) The Internet Society (1998).  All Rights Reserved.
+\$rfc2289words=array(
+"A",     "ABE",   "ACE",   "ACT",   "AD",    "ADA",   "ADD",
+"AGO",   "AID",   "AIM",   "AIR",   "ALL",   "ALP",   "AM",    "AMY",
+"AN",    "ANA",   "AND",   "ANN",   "ANT",   "ANY",   "APE",   "APS",
+"APT",   "ARC",   "ARE",   "ARK",   "ARM",   "ART",   "AS",    "ASH",
+"ASK",   "AT",    "ATE",   "AUG",   "AUK",   "AVE",   "AWE",   "AWK",
+"AWL",   "AWN",   "AX",   "AYE",   "BAD",   "BAG",   "BAH",   "BAM",
+"BAN",   "BAR",   "BAT",   "BAY",   "BE",    "BED",   "BEE",   "BEG",
+"BEN",   "BET",   "BEY",   "BIB",   "BID",   "BIG",   "BIN",   "BIT",
+"BOB",   "BOG",   "BON",   "BOO",   "BOP",   "BOW",   "BOY",   "BUB",
+"BUD",   "BUG",   "BUM",   "BUN",   "BUS",   "BUT",   "BUY",   "BY",
+"BYE",   "CAB",   "CAL",   "CAM",   "CAN",   "CAP",   "CAR",   "CAT",
+"CAW",   "COD",   "COG",   "COL",   "CON",   "COO",   "COP",   "COT",
+"COW",   "COY",   "CRY",   "CUB",   "CUE",   "CUP",   "CUR",   "CUT",
+"DAB",   "DAD",   "DAM",   "DAN",   "DAR",   "DAY",   "DEE",   "DEL",
+"DEN",   "DES",   "DEW",   "DID",   "DIE",   "DIG",   "DIN",   "DIP",
+"DO",    "DOE",   "DOG",   "DON",   "DOT",   "DOW",   "DRY",   "DUB",
+"DUD",   "DUE",   "DUG",   "DUN",   "EAR",   "EAT",   "ED",    "EEL",
+"EGG",   "EGO",   "ELI",   "ELK",   "ELM",   "ELY",   "EM",    "END",
+"EST",   "ETC",   "EVA",   "EVE",   "EWE",   "EYE",   "FAD",   "FAN",
+"FAR",   "FAT",   "FAY",   "FED",   "FEE",   "FEW",   "FIB",   "FIG",
+"FIN",   "FIR",   "FIT",   "FLO",   "FLY",   "FOE",   "FOG",   "FOR",
+"FRY",   "FUM",   "FUN",   "FUR",   "GAB",   "GAD",   "GAG",   "GAL",
+"GAM",   "GAP",   "GAS",   "GAY",   "GEE",   "GEL",   "GEM",   "GET",
+"GIG",   "GIL",   "GIN",   "GO",    "GOT",   "GUM",   "GUN",   "GUS",
+"GUT",   "GUY",   "GYM",   "GYP",   "HA",    "HAD",   "HAL",   "HAM",
+"HAN",   "HAP",   "HAS",   "HAT",   "HAW",   "HAY",   "HE",    "HEM",
+"HEN",   "HER",   "HEW",   "HEY",   "HI",    "HID",   "HIM",   "HIP",
+"HIS",   "HIT",   "HO",   "HOB",   "HOC",   "HOE",   "HOG",   "HOP",
+"HOT",   "HOW",   "HUB",   "HUE",   "HUG",   "HUH",   "HUM",   "HUT",
+"I",     "ICY",   "IDA",   "IF",    "IKE",   "ILL",   "INK",   "INN",
+"IO",    "ION",   "IQ",   "IRA",   "IRE",   "IRK",   "IS",    "IT",
+"ITS",   "IVY",   "JAB",   "JAG",   "JAM",   "JAN",   "JAR",   "JAW",
+"JAY",   "JET",   "JIG",   "JIM",   "JO",    "JOB",   "JOE",   "JOG",
+"JOT",   "JOY",   "JUG",   "JUT",   "KAY",   "KEG",   "KEN",   "KEY",
+"KID",   "KIM",   "KIN",   "KIT",   "LA",    "LAB",   "LAC",   "LAD",
+"LAG",   "LAM",   "LAP",   "LAW",   "LAY",   "LEA",   "LED",   "LEE",
+"LEG",   "LEN",   "LEO",   "LET",   "LEW",   "LID",   "LIE",   "LIN",
+"LIP",   "LIT",   "LO",   "LOB",   "LOG",   "LOP",   "LOS",   "LOT",
+"LOU",   "LOW",   "LOY",   "LUG",   "LYE",   "MA",    "MAC",   "MAD",
+"MAE",   "MAN",   "MAO",   "MAP",   "MAT",   "MAW",   "MAY",   "ME",
+"MEG",   "MEL",   "MEN",   "MET",   "MEW",   "MID",   "MIN",   "MIT",
+"MOB",   "MOD",   "MOE",   "MOO",   "MOP",   "MOS",   "MOT",   "MOW",
+"MUD",   "MUG",   "MUM",   "MY",    "NAB",   "NAG",   "NAN",   "NAP",
+
+"NAT",   "NAY",   "NE",   "NED",   "NEE",   "NET",   "NEW",   "NIB",
+"NIL",   "NIP",   "NIT",   "NO",    "NOB",   "NOD",   "NON",   "NOR",
+"NOT",   "NOV",   "NOW",   "NU",    "NUN",   "NUT",   "O",     "OAF",
+"OAK",   "OAR",   "OAT",   "ODD",   "ODE",   "OF",    "OFF",   "OFT",
+"OH",    "OIL",   "OK",   "OLD",   "ON",    "ONE",   "OR",    "ORB",
+"ORE",   "ORR",   "OS",   "OTT",   "OUR",   "OUT",   "OVA",   "OW",
+"OWE",   "OWL",   "OWN",   "OX",    "PA",    "PAD",   "PAL",   "PAM",
+"PAN",   "PAP",   "PAR",   "PAT",   "PAW",   "PAY",   "PEA",   "PEG",
+"PEN",   "PEP",   "PER",   "PET",   "PEW",   "PHI",   "PI",    "PIE",
+"PIN",   "PIT",   "PLY",   "PO",    "POD",   "POE",   "POP",   "POT",
+"POW",   "PRO",   "PRY",   "PUB",   "PUG",   "PUN",   "PUP",   "PUT",
+"QUO",   "RAG",   "RAM",   "RAN",   "RAP",   "RAT",   "RAW",   "RAY",
+"REB",   "RED",   "REP",   "RET",   "RIB",   "RID",   "RIG",   "RIM",
+"RIO",   "RIP",   "ROB",   "ROD",   "ROE",   "RON",   "ROT",   "ROW",
+"ROY",   "RUB",   "RUE",   "RUG",   "RUM",   "RUN",   "RYE",   "SAC",
+"SAD",   "SAG",   "SAL",   "SAM",   "SAN",   "SAP",   "SAT",   "SAW",
+"SAY",   "SEA",   "SEC",   "SEE",   "SEN",   "SET",   "SEW",   "SHE",
+"SHY",   "SIN",   "SIP",   "SIR",   "SIS",   "SIT",   "SKI",   "SKY",
+"SLY",   "SO",    "SOB",   "SOD",   "SON",   "SOP",   "SOW",   "SOY",
+"SPA",   "SPY",   "SUB",   "SUD",   "SUE",   "SUM",   "SUN",   "SUP",
+"TAB",   "TAD",   "TAG",   "TAN",   "TAP",   "TAR",   "TEA",   "TED",
+"TEE",   "TEN",   "THE",   "THY",   "TIC",   "TIE",   "TIM",   "TIN",
+"TIP",   "TO",    "TOE",   "TOG",   "TOM",   "TON",   "TOO",   "TOP",
+"TOW",   "TOY",   "TRY",   "TUB",   "TUG",   "TUM",   "TUN",   "TWO",
+"UN",    "UP",    "US",   "USE",   "VAN",   "VAT",   "VET",   "VIE",
+"WAD",   "WAG",   "WAR",   "WAS",   "WAY",   "WE",    "WEB",   "WED",
+"WEE",   "WET",   "WHO",   "WHY",   "WIN",   "WIT",   "WOK",   "WON",
+"WOO",   "WOW",   "WRY",   "WU",    "YAM",   "YAP",   "YAW",   "YE",
+"YEA",   "YES",   "YET",   "YOU",   "ABED",  "ABEL",  "ABET",  "ABLE",
+"ABUT",  "ACHE",  "ACID",  "ACME",  "ACRE",  "ACTA",  "ACTS",  "ADAM",
+"ADDS",  "ADEN",  "AFAR",  "AFRO",  "AGEE",  "AHEM",  "AHOY",  "AIDA",
+"AIDE",  "AIDS",  "AIRY",  "AJAR",  "AKIN",  "ALAN",  "ALEC",  "ALGA",
+"ALIA",  "ALLY",  "ALMA",  "ALOE",  "ALSO",  "ALTO",  "ALUM",  "ALVA",
+"AMEN",  "AMES",  "AMID",  "AMMO",  "AMOK",  "AMOS",  "AMRA",  "ANDY",
+"ANEW",  "ANNA",  "ANNE",  "ANTE",  "ANTI",  "AQUA",  "ARAB",  "ARCH",
+"AREA",  "ARGO",  "ARID",  "ARMY",  "ARTS",  "ARTY",  "ASIA",  "ASKS",
+"ATOM",  "AUNT",  "AURA",  "AUTO",  "AVER",  "AVID",  "AVIS",  "AVON",
+"AVOW",  "AWAY",  "AWRY",  "BABE",  "BABY",  "BACH",  "BACK",  "BADE",
+"BAIL",  "BAIT",  "BAKE",  "BALD",  "BALE",  "BALI",  "BALK",  "BALL",
+"BALM",  "BAND",  "BANE",  "BANG",  "BANK",  "BARB",  "BARD",  "BARE",
+"BARK",  "BARN",  "BARR",  "BASE",  "BASH",  "BASK",  "BASS",  "BATE",
+"BATH",  "BAWD",  "BAWL",  "BEAD",  "BEAK",  "BEAM",  "BEAN",  "BEAR",
+"BEAT",  "BEAU",  "BECK",  "BEEF",  "BEEN",  "BEER",  "BEET",  "BELA",
+"BELL",  "BELT",  "BEND",  "BENT",  "BERG",  "BERN",  "BERT",  "BESS",
+"BEST",  "BETA",  "BETH",  "BHOY",  "BIAS",  "BIDE",  "BIEN",  "BILE",
+"BILK",  "BILL",  "BIND",  "BING",  "BIRD",  "BITE",  "BITS",  "BLAB",
+"BLAT",  "BLED",  "BLEW",  "BLOB",  "BLOC",  "BLOT",  "BLOW",  "BLUE",
+"BLUM",  "BLUR",  "BOAR",  "BOAT",  "BOCA",  "BOCK",  "BODE",  "BODY",
+
+"BOGY",  "BOHR",  "BOIL",  "BOLD",  "BOLO",  "BOLT",  "BOMB",  "BONA",
+"BOND",  "BONE",  "BONG",  "BONN",  "BONY",  "BOOK",  "BOOM",  "BOON",
+"BOOT",  "BORE",  "BORG",  "BORN",  "BOSE",  "BOSS",  "BOTH",  "BOUT",
+"BOWL",  "BOYD",  "BRAD",  "BRAE",  "BRAG",  "BRAN",  "BRAY",  "BRED",
+"BREW",  "BRIG",  "BRIM",  "BROW",  "BUCK",  "BUDD",  "BUFF",  "BULB",
+"BULK",  "BULL",  "BUNK",  "BUNT",  "BUOY",  "BURG",  "BURL",  "BURN",
+"BURR",  "BURT",  "BURY",  "BUSH",  "BUSS",  "BUST",  "BUSY",  "BYTE",
+"CADY",  "CAFE",  "CAGE",  "CAIN",  "CAKE",  "CALF",  "CALL",  "CALM",
+"CAME",  "CANE",  "CANT",  "CARD",  "CARE",  "CARL",  "CARR",  "CART",
+"CASE",  "CASH",  "CASK",  "CAST",  "CAVE",  "CEIL",  "CELL",  "CENT",
+"CERN",  "CHAD",  "CHAR",  "CHAT",  "CHAW",  "CHEF",  "CHEN",  "CHEW",
+"CHIC",  "CHIN",  "CHOU",  "CHOW",  "CHUB",  "CHUG",  "CHUM",  "CITE",
+"CITY",  "CLAD",  "CLAM",  "CLAN",  "CLAW",  "CLAY",  "CLOD",  "CLOG",
+"CLOT",  "CLUB",  "CLUE",  "COAL",  "COAT",  "COCA",  "COCK",  "COCO",
+"CODA",  "CODE",  "CODY",  "COED",  "COIL",  "COIN",  "COKE",  "COLA",
+"COLD",  "COLT",  "COMA",  "COMB",  "COME",  "COOK",  "COOL",  "COON",
+"COOT",  "CORD",  "CORE",  "CORK",  "CORN",  "COST",  "COVE",  "COWL",
+"CRAB",  "CRAG",  "CRAM",  "CRAY",  "CREW",  "CRIB",  "CROW",  "CRUD",
+"CUBA",  "CUBE",  "CUFF",  "CULL",  "CULT",  "CUNY",  "CURB",  "CURD",
+"CURE",  "CURL",  "CURT",  "CUTS",  "DADE",  "DALE",  "DAME",  "DANA",
+"DANE",  "DANG",  "DANK",  "DARE",  "DARK",  "DARN",  "DART",  "DASH",
+"DATA",  "DATE",  "DAVE",  "DAVY",  "DAWN",  "DAYS",  "DEAD",  "DEAF",
+"DEAL",  "DEAN",  "DEAR",  "DEBT",  "DECK",  "DEED",  "DEEM",  "DEER",
+"DEFT",  "DEFY",  "DELL",  "DENT",  "DENY",  "DESK",  "DIAL",  "DICE",
+"DIED",  "DIET",  "DIME",  "DINE",  "DING",  "DINT",  "DIRE",  "DIRT",
+"DISC",  "DISH",  "DISK",  "DIVE",  "DOCK",  "DOES",  "DOLE",  "DOLL",
+"DOLT",  "DOME",  "DONE",  "DOOM",  "DOOR",  "DORA",  "DOSE",  "DOTE",
+"DOUG",  "DOUR",  "DOVE",  "DOWN",  "DRAB",  "DRAG",  "DRAM",  "DRAW",
+"DREW",  "DRUB",  "DRUG",  "DRUM",  "DUAL",  "DUCK",  "DUCT",  "DUEL",
+"DUET",  "DUKE",  "DULL",  "DUMB",  "DUNE",  "DUNK",  "DUSK",  "DUST",
+"DUTY",  "EACH",  "EARL",  "EARN",  "EASE",  "EAST",  "EASY",  "EBEN",
+"ECHO",  "EDDY",  "EDEN",  "EDGE",  "EDGY",  "EDIT",  "EDNA",  "EGAN",
+"ELAN",  "ELBA",  "ELLA",  "ELSE",  "EMIL",  "EMIT",  "EMMA",  "ENDS",
+"ERIC",  "EROS",  "EVEN",  "EVER",  "EVIL",  "EYED",  "FACE",  "FACT",
+"FADE",  "FAIL",  "FAIN",  "FAIR",  "FAKE",  "FALL",  "FAME",  "FANG",
+"FARM",  "FAST",  "FATE",  "FAWN",  "FEAR",  "FEAT",  "FEED",  "FEEL",
+"FEET",  "FELL",  "FELT",  "FEND",  "FERN",  "FEST",  "FEUD",  "FIEF",
+"FIGS",  "FILE",  "FILL",  "FILM",  "FIND",  "FINE",  "FINK",  "FIRE",
+"FIRM",  "FISH",  "FISK",  "FIST",  "FITS",  "FIVE",  "FLAG",  "FLAK",
+"FLAM",  "FLAT",  "FLAW",  "FLEA",  "FLED",  "FLEW",  "FLIT",  "FLOC",
+"FLOG",  "FLOW",  "FLUB",  "FLUE",  "FOAL",  "FOAM",  "FOGY",  "FOIL",
+"FOLD",  "FOLK",  "FOND",  "FONT",  "FOOD",  "FOOL",  "FOOT",  "FORD",
+"FORE",  "FORK",  "FORM",  "FORT",  "FOSS",  "FOUL",  "FOUR",  "FOWL",
+"FRAU",  "FRAY",  "FRED",  "FREE",  "FRET",  "FREY",  "FROG",  "FROM",
+"FUEL",  "FULL",  "FUME",  "FUND",  "FUNK",  "FURY",  "FUSE",  "FUSS",
+"GAFF",  "GAGE",  "GAIL",  "GAIN",  "GAIT",  "GALA",  "GALE",  "GALL",
+"GALT",  "GAME",  "GANG",  "GARB",  "GARY",  "GASH",  "GATE",  "GAUL",
+"GAUR",  "GAVE",  "GAWK",  "GEAR",  "GELD",  "GENE",  "GENT",  "GERM",
+
+"GETS",  "GIBE",  "GIFT",  "GILD",  "GILL",  "GILT",  "GINA",  "GIRD",
+"GIRL",  "GIST",  "GIVE",  "GLAD",  "GLEE",  "GLEN",  "GLIB",  "GLOB",
+"GLOM",  "GLOW",  "GLUE",  "GLUM",  "GLUT",  "GOAD",  "GOAL",  "GOAT",
+"GOER",  "GOES",  "GOLD",  "GOLF",  "GONE",  "GONG",  "GOOD",  "GOOF",
+"GORE",  "GORY",  "GOSH",  "GOUT",  "GOWN",  "GRAB",  "GRAD",  "GRAY",
+"GREG",  "GREW",  "GREY",  "GRID",  "GRIM",  "GRIN",  "GRIT",  "GROW",
+"GRUB",  "GULF",  "GULL",  "GUNK",  "GURU",  "GUSH",  "GUST",  "GWEN",
+"GWYN",  "HAAG",  "HAAS",  "HACK",  "HAIL",  "HAIR",  "HALE",  "HALF",
+"HALL",  "HALO",  "HALT",  "HAND",  "HANG",  "HANK",  "HANS",  "HARD",
+"HARK",  "HARM",  "HART",  "HASH",  "HAST",  "HATE",  "HATH",  "HAUL",
+"HAVE",  "HAWK",  "HAYS",  "HEAD",  "HEAL",  "HEAR",  "HEAT",  "HEBE",
+"HECK",  "HEED",  "HEEL",  "HEFT",  "HELD",  "HELL",  "HELM",  "HERB",
+"HERD",  "HERE",  "HERO",  "HERS",  "HESS",  "HEWN",  "HICK",  "HIDE",
+"HIGH",  "HIKE",  "HILL",  "HILT",  "HIND",  "HINT",  "HIRE",  "HISS",
+"HIVE",  "HOBO",  "HOCK",  "HOFF",  "HOLD",  "HOLE",  "HOLM",  "HOLT",
+"HOME",  "HONE",  "HONK",  "HOOD",  "HOOF",  "HOOK",  "HOOT",  "HORN",
+"HOSE",  "HOST",  "HOUR",  "HOVE",  "HOWE",  "HOWL",  "HOYT",  "HUCK",
+"HUED",  "HUFF",  "HUGE",  "HUGH",  "HUGO",  "HULK",  "HULL",  "HUNK",
+"HUNT",  "HURD",  "HURL",  "HURT",  "HUSH",  "HYDE",  "HYMN",  "IBIS",
+"ICON",  "IDEA",  "IDLE",  "IFFY",  "INCA",  "INCH",  "INTO",  "IONS",
+"IOTA",  "IOWA",  "IRIS",  "IRMA",  "IRON",  "ISLE",  "ITCH",  "ITEM",
+"IVAN",  "JACK",  "JADE",  "JAIL",  "JAKE",  "JANE",  "JAVA",  "JEAN",
+"JEFF",  "JERK",  "JESS",  "JEST",  "JIBE",  "JILL",  "JILT",  "JIVE",
+"JOAN",  "JOBS",  "JOCK",  "JOEL",  "JOEY",  "JOHN",  "JOIN",  "JOKE",
+"JOLT",  "JOVE",  "JUDD",  "JUDE",  "JUDO",  "JUDY",  "JUJU",  "JUKE",
+"JULY",  "JUNE",  "JUNK",  "JUNO",  "JURY",  "JUST",  "JUTE",  "KAHN",
+"KALE",  "KANE",  "KANT",  "KARL",  "KATE",  "KEEL",  "KEEN",  "KENO",
+"KENT",  "KERN",  "KERR",  "KEYS",  "KICK",  "KILL",  "KIND",  "KING",
+"KIRK",  "KISS",  "KITE",  "KLAN",  "KNEE",  "KNEW",  "KNIT",  "KNOB",
+"KNOT",  "KNOW",  "KOCH",  "KONG",  "KUDO",  "KURD",  "KURT",  "KYLE",
+"LACE",  "LACK",  "LACY",  "LADY",  "LAID",  "LAIN",  "LAIR",  "LAKE",
+"LAMB",  "LAME",  "LAND",  "LANE",  "LANG",  "LARD",  "LARK",  "LASS",
+"LAST",  "LATE",  "LAUD",  "LAVA",  "LAWN",  "LAWS",  "LAYS",  "LEAD",
+"LEAF",  "LEAK",  "LEAN",  "LEAR",  "LEEK",  "LEER",  "LEFT",  "LEND",
+"LENS",  "LENT",  "LEON",  "LESK",  "LESS",  "LEST",  "LETS",  "LIAR",
+"LICE",  "LICK",  "LIED",  "LIEN",  "LIES",  "LIEU",  "LIFE",  "LIFT",
+"LIKE",  "LILA",  "LILT",  "LILY",  "LIMA",  "LIMB",  "LIME",  "LIND",
+"LINE",  "LINK",  "LINT",  "LION",  "LISA",  "LIST",  "LIVE",  "LOAD",
+"LOAF",  "LOAM",  "LOAN",  "LOCK",  "LOFT",  "LOGE",  "LOIS",  "LOLA",
+"LONE",  "LONG",  "LOOK",  "LOON",  "LOOT",  "LORD",  "LORE",  "LOSE",
+"LOSS",  "LOST",  "LOUD",  "LOVE",  "LOWE",  "LUCK",  "LUCY",  "LUGE",
+"LUKE",  "LULU",  "LUND",  "LUNG",  "LURA",  "LURE",  "LURK",  "LUSH",
+"LUST",  "LYLE",  "LYNN",  "LYON",  "LYRA",  "MACE",  "MADE",  "MAGI",
+"MAID",  "MAIL",  "MAIN",  "MAKE",  "MALE",  "MALI",  "MALL",  "MALT",
+"MANA",  "MANN",  "MANY",  "MARC",  "MARE",  "MARK",  "MARS",  "MART",
+"MARY",  "MASH",  "MASK",  "MASS",  "MAST",  "MATE",  "MATH",  "MAUL",
+"MAYO",  "MEAD",  "MEAL",  "MEAN",  "MEAT",  "MEEK",  "MEET",  "MELD",
+"MELT",  "MEMO",  "MEND",  "MENU",  "MERT",  "MESH",  "MESS",  "MICE",
+
+"MIKE",  "MILD",  "MILE",  "MILK",  "MILL",  "MILT",  "MIMI",  "MIND",
+"MINE",  "MINI",  "MINK",  "MINT",  "MIRE",  "MISS",  "MIST",  "MITE",
+"MITT",  "MOAN",  "MOAT",  "MOCK",  "MODE",  "MOLD",  "MOLE",  "MOLL",
+"MOLT",  "MONA",  "MONK",  "MONT",  "MOOD",  "MOON",  "MOOR",  "MOOT",
+"MORE",  "MORN",  "MORT",  "MOSS",  "MOST",  "MOTH",  "MOVE",  "MUCH",
+"MUCK",  "MUDD",  "MUFF",  "MULE",  "MULL",  "MURK",  "MUSH",  "MUST",
+"MUTE",  "MUTT",  "MYRA",  "MYTH",  "NAGY",  "NAIL",  "NAIR",  "NAME",
+"NARY",  "NASH",  "NAVE",  "NAVY",  "NEAL",  "NEAR",  "NEAT",  "NECK",
+"NEED",  "NEIL",  "NELL",  "NEON",  "NERO",  "NESS",  "NEST",  "NEWS",
+"NEWT",  "NIBS",  "NICE",  "NICK",  "NILE",  "NINA",  "NINE",  "NOAH",
+"NODE",  "NOEL",  "NOLL",  "NONE",  "NOOK",  "NOON",  "NORM",  "NOSE",
+"NOTE",  "NOUN",  "NOVA",  "NUDE",  "NULL",  "NUMB",  "OATH",  "OBEY",
+"OBOE",  "ODIN",  "OHIO",  "OILY",  "OINT",  "OKAY",  "OLAF",  "OLDY",
+"OLGA",  "OLIN",  "OMAN",  "OMEN",  "OMIT",  "ONCE",  "ONES",  "ONLY",
+"ONTO",  "ONUS",  "ORAL",  "ORGY",  "OSLO",  "OTIS",  "OTTO",  "OUCH",
+"OUST",  "OUTS",  "OVAL",  "OVEN",  "OVER",  "OWLY",  "OWNS",  "QUAD",
+"QUIT",  "QUOD",  "RACE",  "RACK",  "RACY",  "RAFT",  "RAGE",  "RAID",
+"RAIL",  "RAIN",  "RAKE",  "RANK",  "RANT",  "RARE",  "RASH",  "RATE",
+"RAVE",  "RAYS",  "READ",  "REAL",  "REAM",  "REAR",  "RECK",  "REED",
+"REEF",  "REEK",  "REEL",  "REID",  "REIN",  "RENA",  "REND",  "RENT",
+"REST",  "RICE",  "RICH",  "RICK",  "RIDE",  "RIFT",  "RILL",  "RIME",
+"RING",  "RINK",  "RISE",  "RISK",  "RITE",  "ROAD",  "ROAM",  "ROAR",
+"ROBE",  "ROCK",  "RODE",  "ROIL",  "ROLL",  "ROME",  "ROOD",  "ROOF",
+"ROOK",  "ROOM",  "ROOT",  "ROSA",  "ROSE",  "ROSS",  "ROSY",  "ROTH",
+"ROUT",  "ROVE",  "ROWE",  "ROWS",  "RUBE",  "RUBY",  "RUDE",  "RUDY",
+"RUIN",  "RULE",  "RUNG",  "RUNS",  "RUNT",  "RUSE",  "RUSH",  "RUSK",
+"RUSS",  "RUST",  "RUTH",  "SACK",  "SAFE",  "SAGE",  "SAID",  "SAIL",
+"SALE",  "SALK",  "SALT",  "SAME",  "SAND",  "SANE",  "SANG",  "SANK",
+"SARA",  "SAUL",  "SAVE",  "SAYS",  "SCAN",  "SCAR",  "SCAT",  "SCOT",
+"SEAL",  "SEAM",  "SEAR",  "SEAT",  "SEED",  "SEEK",  "SEEM",  "SEEN",
+"SEES",  "SELF",  "SELL",  "SEND",  "SENT",  "SETS",  "SEWN",  "SHAG",
+"SHAM",  "SHAW",  "SHAY",  "SHED",  "SHIM",  "SHIN",  "SHOD",  "SHOE",
+"SHOT",  "SHOW",  "SHUN",  "SHUT",  "SICK",  "SIDE",  "SIFT",  "SIGH",
+"SIGN",  "SILK",  "SILL",  "SILO",  "SILT",  "SINE",  "SING",  "SINK",
+"SIRE",  "SITE",  "SITS",  "SITU",  "SKAT",  "SKEW",  "SKID",  "SKIM",
+"SKIN",  "SKIT",  "SLAB",  "SLAM",  "SLAT",  "SLAY",  "SLED",  "SLEW",
+"SLID",  "SLIM",  "SLIT",  "SLOB",  "SLOG",  "SLOT",  "SLOW",  "SLUG",
+"SLUM",  "SLUR",  "SMOG",  "SMUG",  "SNAG",  "SNOB",  "SNOW",  "SNUB",
+"SNUG",  "SOAK",  "SOAR",  "SOCK",  "SODA",  "SOFA",  "SOFT",  "SOIL",
+"SOLD",  "SOME",  "SONG",  "SOON",  "SOOT",  "SORE",  "SORT",  "SOUL",
+"SOUR",  "SOWN",  "STAB",  "STAG",  "STAN",  "STAR",  "STAY",  "STEM",
+"STEW",  "STIR",  "STOW",  "STUB",  "STUN",  "SUCH",  "SUDS",  "SUIT",
+"SULK",  "SUMS",  "SUNG",  "SUNK",  "SURE",  "SURF",  "SWAB",  "SWAG",
+"SWAM",  "SWAN",  "SWAT",  "SWAY",  "SWIM",  "SWUM",  "TACK",  "TACT",
+"TAIL",  "TAKE",  "TALE",  "TALK",  "TALL",  "TANK",  "TASK",  "TATE",
+"TAUT",  "TEAL",  "TEAM",  "TEAR",  "TECH",  "TEEM",  "TEEN",  "TEET",
+"TELL",  "TEND",  "TENT",  "TERM",  "TERN",  "TESS",  "TEST",  "THAN",
+"THAT",  "THEE",  "THEM",  "THEN",  "THEY",  "THIN",  "THIS",  "THUD",
+
+"THUG",  "TICK",  "TIDE",  "TIDY",  "TIED",  "TIER",  "TILE",  "TILL",
+"TILT",  "TIME",  "TINA",  "TINE",  "TINT",  "TINY",  "TIRE",  "TOAD",
+"TOGO",  "TOIL",  "TOLD",  "TOLL",  "TONE",  "TONG",  "TONY",  "TOOK",
+"TOOL",  "TOOT",  "TORE",  "TORN",  "TOTE",  "TOUR",  "TOUT",  "TOWN",
+"TRAG",  "TRAM",  "TRAY",  "TREE",  "TREK",  "TRIG",  "TRIM",  "TRIO",
+"TROD",  "TROT",  "TROY",  "TRUE",  "TUBA",  "TUBE",  "TUCK",  "TUFT",
+"TUNA",  "TUNE",  "TUNG",  "TURF",  "TURN",  "TUSK",  "TWIG",  "TWIN",
+"TWIT",  "ULAN",  "UNIT",  "URGE",  "USED",  "USER",  "USES",  "UTAH",
+"VAIL",  "VAIN",  "VALE",  "VARY",  "VASE",  "VAST",  "VEAL",  "VEDA",
+"VEIL",  "VEIN",  "VEND",  "VENT",  "VERB",  "VERY",  "VETO",  "VICE",
+"VIEW",  "VINE",  "VISE",  "VOID",  "VOLT",  "VOTE",  "WACK",  "WADE",
+"WAGE",  "WAIL",  "WAIT",  "WAKE",  "WALE",  "WALK",  "WALL",  "WALT",
+"WAND",  "WANE",  "WANG",  "WANT",  "WARD",  "WARM",  "WARN",  "WART",
+"WASH",  "WAST",  "WATS",  "WATT",  "WAVE",  "WAVY",  "WAYS",  "WEAK",
+"WEAL",  "WEAN",  "WEAR",  "WEED",  "WEEK",  "WEIR",  "WELD",  "WELL",
+"WELT",  "WENT",  "WERE",  "WERT",  "WEST",  "WHAM",  "WHAT",  "WHEE",
+"WHEN",  "WHET",  "WHOA",  "WHOM",  "WICK",  "WIFE",  "WILD",  "WILL",
+"WIND",  "WINE",  "WING",  "WINK",  "WINO",  "WIRE",  "WISE",  "WISH",
+"WITH",  "WOLF",  "WONT",  "WOOD",  "WOOL",  "WORD",  "WORE",  "WORK",
+"WORM",  "WORN",  "WOVE",  "WRIT",  "WYNN",  "YALE",  "YANG",  "YANK",
+"YARD",  "YARN",  "YAWL",  "YAWN",  "YEAH",  "YEAR",  "YELL",  "YOGA",
+  "YOKE" );
 ?>
 EOF
     close $f;
+    if((system "ln -s config.php config.txt")==0){
+	print "+ Created config.txt symlink to config.php for source viewing.\n";
+    }else{
+	print "! Failed to created config.txt symlink to config.php.\n";
+    }
 }
+
+
 
 
 if($f=openIfNoFile("voters.sql",0660)){
@@ -217,12 +510,21 @@ EOF
     close $f;
 }
 
+if($f=openIfNoFile("printelection.sql",0660)){
+    print $f <<EOF;
+USE ${dbdb};
+SELECT * FROM ${ename}vote;
+SELECT * FROM ${ename}voter;
+EOF
+    close $f;
+}
+
 if($f=openIfNoFile("createtable.sql",0660)){
     print $f "USE ${dbdb};
 DROP TABLE IF EXISTS ${ename}voter;
 DROP TABLE IF EXISTS ${ename}vote;
 CREATE TABLE ${ename}voter (
-crsid VARCHAR(8) NOT NULL PRIMARY KEY,
+crsid VARCHAR(16) NOT NULL PRIMARY KEY,
 voted TINYINT
 ) TYPE=InnoDB;
 CREATE TABLE ${ename}vote (
@@ -262,39 +564,52 @@ Officer will be able to see who has voted but will not be able to tell
 who has cast which votes.</p>
 
 <p>When you have successfully placed your vote, you will be emailed a
-random sequence of letters. This system does not store the connection
-between this letter sequence and your identity, however it does email
-the random letters alongside your vote to the returning officer (and
-store it in a database to protect against email fraud).  When polls
-have closed, the Returning Officer will print out a list of all the
-votes cast - because only you will know your sequence of random
-letters, you will be able to check that your vote was correctly
-included.</p>
+sequence of random-looking short words - your "voting token". This system does
+not store the connection between your voting token and your
+identity, however it does email your voting token alongside your vote
+to the returning officer (and store it in a database to protect
+against email fraud).  When polls have closed, the Returning Officer
+will print out a list of all the votes cast - because only you will
+know your voting token, you will be able to check that
+your vote was correctly included.</p>
 
 <hr />
 
 <h3>How to vote</h3>
 
-<p>Voting is by the Single Transferable Vote system as specified in
-the Statutes of the University of Cambridge.</p>
+<p>Voting is by the Single Transferable Vote system described in Chapter 1
+of the Ordinances of the University of Cambridge.</p>
 
 <ul>
 
-<li>Place a "1" next to the candidate you would like to see elected to
-a given post, a "2" next to your second favourite, and so on.</li>
+<li>Next to number 1 (in the preference column for a given post),
+select the name of the candidate to whom you give your first
+preference (using the pull-down selection menu controls).</li>
+
+<li>You may also enter, against preference ranks 2, 3 and so on, the
+names of other candidates in the order you wish to vote for them.</li>
+
+<li>Continue until you have voted for those candidates you wish to vote
+for, and leave any remaining boxes blank. You are under no obligation to
+vote for all candidates.</li>
 
 <li>Repeat this process for each post listed.</li>
 
-<li>You do not have to express a preference for every candidate. It is
-acceptable to leave boxes blank.</li>
+<li>Some elections may list a candidate named "RON". This acronym
+expands to "Re-Open Nominations". You may vote for RON as you would
+any other candidate. Should RON be 'elected', the position will be
+re-opened, and will be decided at a subsequent election.</li>
 
-<li>"RON" stands for "Re-Open Nominations". Vote for RON if you feel
-that none of the candidates are adequate, or if you feel that no other
-candidates apart from the ones you have already recorded a preference
-for are adequate.</li>
+<li>The order of your preferences is crucial. Later preferences will
+only be considered if an earlier preference has qualified for election
+or has been eliminated from the election due to gaining an
+insufficient number of votes. </li>
 
 <li>When you have completed this form CHECK IT, since once you submit
-the form errors cannot be corrected and may invalidate your vote.</li>
+the form errors cannot be corrected and may invalidate your vote.  It
+is possible to cast invalid votes with this electronic system. This
+intentionally mirrors the choice available to you to cast invalid
+votes in a paper-based balloting process.</li>
 
 </ul>
 
@@ -310,27 +625,34 @@ for $i ( 0 .. $#eData ) {
     if($n >= 0){
 	$selectOpts="<option value=\"0\">(blank)</option>";
 	for $j ( 1 .. $n ) {
-	    $selectOpts .= "<option value=\"$j\">$j</option>";
+	    $selectOpts .= "<option value=\"$j\">$eData[$i][$j]</option>";
 	}
     }
 
     print $f <<EOF;
 <h2>$eData[$i][0]</h2>
 <table class="vote v$i">
-  <tr><th>Candidate</th><th>Preference</th></tr>
+  <tr><th>Preference</th><th>Candidate</th></tr>
 EOF
 $v=$i+1;
     for $j ( 1 .. $n ) {
-	print $f "<tr class=\"c$j ".(($j%2)?"codd":"ceven")."\"><td>$eData[$i][$j]</td><td align=\"center\"><select name=\"v[$v][$j]\">$selectOpts</select></td></tr>\n";
+	print $f "<tr class=\"c$j ".(($j%2)?"codd":"ceven")."\"><td>$j</td><td align=\"center\"><select name=\"v[$v][$j]\">$selectOpts</select></td></tr>\n";
     }
 
     print $f "</table>\n";
 }
 
-    if($md5sum = `md5sum vote.php`){
-	$md5sum =~ s/\s.*$//;
-	$md5sum =~ s/(....)/$1 /g;
-	$md5sum = "The PHP source code has the following MD5 sum: <kbd>$md5sum</kbd>";
+    if($md5sumA = `md5sum vote.php`){
+	$md5sumA =~ s/\s.*$//;
+	$md5sumA =~ s/(....)/$1 /g;
+	$md5sumA = "The PHP source code has the following MD5 sum: <kbd>$md5sumA</kbd>";
+    }else{
+	print "* Unable to calculate md5sum of vote.php.\n";
+    }
+    if($md5sumB = `md5sum config.php`){
+	$md5sumB =~ s/\s.*$//;
+	$md5sumB =~ s/(....)/$1 /g;
+	$md5sumB = "The election configuration file has the following MD5 sum: <kbd>$md5sumB</kbd>";
     }else{
 	print "* Unable to calculate md5sum of vote.php.\n";
     }
@@ -371,7 +693,9 @@ that the software is not modified during the election.  If you do not
 trust this system, you are advised to contact the Returning
 Officer. As stated in the GPL license, this software comes with no
 guarantees.  Feel free to <a href="vote.txt">examine the simple PHP
-code that makes it work</a> directly. $md5sum</p>
+code that makes it work</a> directly. $md5sumA. Also <a
+href="config.txt">check the election configuration file</a>. $md5sumB.
+</p>
 
     <hr />
     <address>Contacts: ${htmlTech} or ${htmlRO}</address>
@@ -388,7 +712,7 @@ if(-f "vote.php"){
         print ": vote.txt is already present\n";
     }else{
         if((system "ln -s vote.php vote.txt")==0){
-            print "+ Created vote.txt symlink to vote.php source viewing.\n";
+            print "+ Created vote.txt symlink to vote.php for source viewing.\n";
         }else{
             print "! Failed to created vote.txt symlink to vote.php.\n";
 	}
@@ -400,14 +724,25 @@ if(-f "vote.php"){
 print <<EOF;
 
 To complete installation you need to:
-(1) Ensure that .htaccess will be protecting this directory
+(1) Ensure that the .htaccess file created will be protecting this directory
+    (i.e. Raven authentication is required to access the ballot form)
 (2) Run createtable.sql to make the database tables, e.g.
+    (your database password is in the dbpass file)
 
-    mysql -u ${dbuser} -p ${dbpass} ${dbdb} <createtable.sql
+    mysql -u ${dbuser} -p ${dbdb} <createtable.sql
+    (this will drop previous tables if present)
 
-(3) Edit voters.sql to include items for all your users (the 0 means "hasn't voted")
+(3) For testing, ensure that you are in the voters.sql file
+    (the 0 means "hasn't voted")
 (4) Run voters.sql to seed the database tables, e.g.
 
-    mysql -u ${dbuser} -p ${dbpass} ${dbdb} <voters.sql
+    mysql -u ${dbuser} -p ${dbdb} <voters.sql
+
+(5) Check the on-line system works as expected.
+(6) Check your vote is recorded, and you are listed as having voted, e.g.
+
+    mysql -u ${dbuser} -p ${dbdb} <printelection.sql
+
+(7) Repeat steps (2) to (4), but using the real electoral roll.
 
 EOF

@@ -1,9 +1,12 @@
-$Id: AUTHORS,v 1.2 2005/10/30 23:36:41 dme26 Exp $
+$Id: AUTHORS,v 1.3 2006/10/22 16:54:47 dme26 Exp $
 
-BOB
-(Basic On-line Ballot-box)
+Basic On-line Ballot-box (BOB)
+http://www.cl.cam.ac.uk/~dme26/proj/BOB/
+Released under GPL. See COPYING for details.
 
-Initial software written by David.Eyers in email domain cantab.net
+Initial software written by David Eyers
 
-Thanks to Simon Hopkins for greatly improving the error handling.
-Thanks to Robert Whittaker for suggestions regarding the database tables.
+Significant contributions:
+* David Turner 
+* Simon Hopkins
+* Robert Whittaker
