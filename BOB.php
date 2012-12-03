@@ -4,7 +4,7 @@
  * This file is part of the Basic Online Ballot-box (BOB).
  * http://www.cl.cam.ac.uk/~dme26/proj/BOB/
  * License: GPL; see below
- * Copyright David Eyers, Martin Lucas-Smith and contributors 2005-2009
+ * Copyright David Eyers, Martin Lucas-Smith and contributors 2005-2011
  *
  * Significant contributions (but almost certainly not responsible for any nasty code) :
  * David Turner, Simon Hopkins, Robert Whittaker
@@ -15,7 +15,7 @@
  *
  * Token word list Copyright The Internet Society (1998).
  *
- * Version 0.11.6
+ * Version 1.0.0
  *
  * Copyright (C) authors as above
  * 
@@ -644,7 +644,7 @@ class BOB
 		
 		# Show the title
 		if (!$disableGui) {
-			echo "\n<p class=\"loginstatus\">Logged in as:<br /><strong>{$this->username}</strong><br />[<a href=\"{$this->logoutLocation}\">Logout</a>]</p>";
+			echo "\n<p class=\"loggedinas\">You are logged in as: <strong>{$this->username}</strong> [<a href=\"{$this->logoutLocation}\" class=\"logout\">log out</a>]</p>";
 			echo "\n\n\n<h1>{$this->pageTitle}</h1>\n\n";
 		}
 		
@@ -1886,7 +1886,9 @@ class BOB
 						break 2;
 					}
 					
-					// Ensure that no additional preference have been added in, to ensure that eventually submitted data matches the database structure
+					// At this point, we now know that, for every selection of every preference of this vote set, there is a valid value in the $_POST['v'] structure
+					
+					// Now we check for crafted forms that contain additional (invalid) data, even though this will not actually be looped-through later in the vote-recording process
 					$expectedPreferencesTotal = (($candidate == 'referendum') ? 1 : count ($candidates) - 1);
 					if (count ($_POST['v'][$voteSet]) != $expectedPreferencesTotal) {	// _POST['v'][$voteSet] is already confirmed as an array if this code is reached
 						$problems[] = "Your browser appeared to post more preferences than exist. Please try again.";
@@ -1894,13 +1896,6 @@ class BOB
 					}
 				}
 				
-				// Ensure that no additional votesets have been added in, to ensure that eventually submitted data matches the database structure
-				if (count ($_POST['v']) != count ($this->config['electionInfo'])) {	// _POST['v'] is already confirmed as an array if this code is reached
-					$problems[] = "Your browser appeared to post more votes than exist. Please try again.";
-					break;
-				}
-				
-				// By this point, we know we are using a non-crafted form (or a crafted form which contains the same submittable values, pointlessly), else we would be out of the loop
 				// Do the following checks as recommended by an ERS member:
 				
 				
@@ -1934,6 +1929,19 @@ class BOB
 					}
 				}
 			}
+			
+			// At this point, we now know that, for every vote set defined in the configuration, there is a valid structure in the $_POST['v'] structure
+			
+			// Ensure that no additional votesets have been added in, to ensure that eventually submitted data matches the database structure
+			if (count ($_POST['v']) != count ($this->config['electionInfo'])) {	// _POST['v'] is already confirmed as an array if this code is reached
+				$problems[] = "Your browser appeared to post more votes than exist. Please try again.";
+			}
+			
+			// We now know that the $_POST['v'] structure is exactly as we expect
+			
+			// A crafted form could contain other $_POST keys, but we never use these elsewhere in the program so do not bother to check for these
+			
+			// By this point, we know we are using a sufficiently non-crafted form (or a crafted form which contains the same submittable values, pointlessly), else we would be out of the loop
 			
 			// Ensure that the voter has confirmed their vote
 			if (!isSet ($_POST['confirmvote']) || $_POST['confirmvote']!='on') {
@@ -2080,27 +2088,24 @@ class BOB
   
   
   // internal voting workflow
-  private function voteWFinternal(&$openTrans){
-
-    // find _POST fields of the form v[voteNumber][preferenceValue]=candidateNumber
-	// Loop through the (now-validated) POST array
-    $coln = '';
-	$colv = '';
-	foreach($_POST['v'] as $k1=>$v1) {
-	  // These is_array checks, int casts and the is_numeric check are actually unnecessary as the structure will have been checked in the vote() loop isSet chain
-      if(is_array($v1)){
-		foreach($v1 as $k2=>$v2){
-		  if(!is_array($v2)){
-		    $v2 = is_numeric($v2)?((int)$v2):0;
-		    $k1 = (int)$k1;
-		    $k2 = (int)$k2;
-		    $coln.=",v${k1}p${k2}";
-		    $colv.=",$v2";
-		  }
+  private function voteWFinternal(&$openTrans)
+  {
+	// Create a string of column names and corresponding column values by looping through the configuration array and looking up the (now-validated) value in the POST array
+	$coln  = '';
+	$colv  = '';
+	foreach ($this->config['electionInfo'] as $voteSet => $candidates) {
+		$voteSet = $voteSet + 1;	// Adjust the array indexing - the generated <select> boxes start at [1] not [0]
+		
+		// Loop through each candidate specified in the config file
+		foreach ($candidates as $preferenceNumber => $candidate) {
+			
+			// Skip the first 'candidate' as that is actually a heading
+			if ($preferenceNumber == 0) {continue;}
+			
+			$coln .= ",v{$voteSet}p{$preferenceNumber}";
+			$colv .= ',' . $_POST['v'][$voteSet][$preferenceNumber];
 		}
-      }
-    }
-	
+	}
 	
 	echo '<p>Recording your vote ...';
     
