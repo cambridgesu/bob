@@ -10,9 +10,8 @@
 -->
 
 <?php
-  // initialise all variables (i.e. thwart register_globals attacks)
-  $bob = false;
-  require("./BOB.php");
+  if(basename($_SERVER['PHP_SELF']) == basename(__FILE__)) $bob = false; // clear $bob if we're not being included ourselves
+  require_once("./BOB.php");
   $title .= ' - view votes';
 ?>
 

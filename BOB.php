@@ -1,5 +1,5 @@
 <!--
-- $Id: BOB.php 127 2007-02-20 15:39:15Z dme26 $
+- $Id: BOB.php 131 2007-02-20 17:34:40Z dme26 $
 -
 - This file is part of the Basic Online Ballot-box (BOB).
 - http://www.cl.cam.ac.uk/~dme26/proj/BOB/
@@ -82,8 +82,8 @@ class BOB {
   }
   
   // Ballot page
-  function ballotPage(){
-    echo '<form action="vote.php" method="post">' . "\n\n";
+  function ballotPage($action = "vote.php"){
+    echo '<form action="',$action,'" method="post">',"\n\n";
 	
 	$i = 0;	// Start a count of vote groups
 	foreach ($this->electionInfo as $options) {	// Loop through each vote group
@@ -92,22 +92,32 @@ class BOB {
 		if (!$options) {continue;}	// If the array is empty, move on
 		
 		$selectOpts = "\t\t\t\t\t<option value=\"0\" class=\"blank\">(blank)</option>\n";
-		foreach ($options as $index => $option) {
-			if ($index == 0) {continue;}	// Miss the heading out
-			$selectOpts .= "\t\t\t\t\t<option value=\"{$index}\">{$option}</option>\n";
-		}
+		if($options[1] == 'referendum'){
+		    $selectOpts .= "\t\t\t\t\t<option value=\"1\">Yes</option>\n\t\t\t\t\t<option value=\"2\">No</option>\n";
+		    
+		    // Create the HTML, creating as many boxes as requested
+		    echo "<h2>{$options[0]}</h2>\n";
+		    echo "<table class=\"vote v{$i}\">\n";
+		    echo "\t\t<tr>\n\t\t\t<th>Referendum decision:</th>\n\t\t\t<td class=\"candidate\">\n\t\t\t\t<select name=\"v[{$i}][1]\" OnMouseWheel=\"PreventScroll(event);\">\n{$selectOpts}\t\t\t\t</select>\n\t\t\t</td>\n\t\t</tr>\n";
+		    echo "</table>\n\n";
+		}else{
+		  foreach ($options as $index => $option) {
+		    if ($index == 0) {continue;}	// Miss the heading out
+		    $selectOpts .= "\t\t\t\t\t<option value=\"{$index}\">{$option}</option>\n";
+		  }
+		  
+		  // Define the number of boxes
+		  $boxes = count ($options) - 1;	// Number of options, minus one (the first - which is the heading)
 		
-		// Define the number of boxes
-		$boxes = count ($options) - 1;	// Number of options, minus one (the first - which is the heading)
-		
-		// Create the HTML, creating as many boxes as requested
-		echo "<h2>{$options[0]}</h2>\n";
-		echo "<table class=\"vote v{$i}\">\n";
-		echo "\t\t<tr>\n\t\t\t<th>Preference</th>\n\t\t\t<th>Candidate</th>\n\t\t</tr>\n";
-		for ($box = 1; $box <= $boxes; $box++) {
-			echo "\t\t<tr class=\"c{$box} " . (($box % 2) ? 'codd' : 'ceven' ) . "\">\n\t\t\t<td class=\"preference\">{$box}</td>\n\t\t\t<td class=\"candidate\">\n\t\t\t\t<select name=\"v[{$i}][{$box}]\" OnMouseWheel=\"PreventScroll(event);\">\n{$selectOpts}\t\t\t\t</select>\n\t\t\t</td>\n\t\t</tr>\n";
+		  // Create the HTML, creating as many boxes as requested
+		  echo "<h2>{$options[0]}</h2>\n";
+		  echo "<table class=\"vote v{$i}\">\n";
+		  echo "\t\t<tr>\n\t\t\t<th>Preference</th>\n\t\t\t<th>Candidate</th>\n\t\t</tr>\n";
+		  for ($box = 1; $box <= $boxes; $box++) {
+		    echo "\t\t<tr class=\"c{$box} " . (($box % 2) ? 'codd' : 'ceven' ) . "\">\n\t\t\t<td class=\"preference\">{$box}</td>\n\t\t\t<td class=\"candidate\">\n\t\t\t\t<select name=\"v[{$i}][{$box}]\" OnMouseWheel=\"PreventScroll(event);\">\n{$selectOpts}\t\t\t\t</select>\n\t\t\t</td>\n\t\t</tr>\n";
+		  }
+		  echo "</table>\n\n";
 		}
-		echo "</table>\n\n";
 	}
   }
   
@@ -210,10 +220,24 @@ EOF;
 	if(preg_match('/\Av(\d+)p(\d+)\z/',$k,$matches)){
 	  $thisPosition = $this->electionInfo[$matches[1]-1][0];
 	  $thisPreference = $matches[2];
-	  $thisCandidate = $v ? $this->electionInfo[$matches[1]-1][$v] : "(no candidate)";
 	  $message.="$k: $v";
-	  if($thisPosition and $thisCandidate){
-	    $message.=" = Give preference $thisPreference to $thisCandidate for $thisPosition.";
+	  if($this->electionInfo[$matches[1]-1][1] == 'referendum'){
+	    switch($v){
+	    case 1:
+	      $message.=" = Vote in favour of referendum ";
+	      break;
+	    case 2:
+	      $message.=" = Vote against referendum ";
+	      break;
+	    default:
+	      $message.=" = Abstain from voting in referendum ";
+	    }
+	    $message.="$thisPosition.";
+	  }else{
+	    $thisCandidate = $v ? $this->electionInfo[$matches[1]-1][$v] : "(no candidate)";
+	    if($thisPosition and $thisCandidate){
+	      $message.=" = Give preference $thisPreference to $thisCandidate for $thisPosition.";
+	    }
 	  }
 	  $message.="\n";
 	}
@@ -615,4 +639,41 @@ EOF;
   require_once("config.php");
   $bob = new BOB($dbdb,$dbhost,$dbuser,$electionInfo,$emailRO,$emailTech,$ename,$endBallot,$htmlNotRegistered,$htmlPostBallot,$htmlPreBallot,$htmlRO,$htmlTech,$startBallot,$title,$adminDuringElectionOK,$positionInfo,$ro);
 
+  if(basename($_SERVER['PHP_SELF']) == basename(__FILE__)) {
+    // we're running top-level
+    switch($_REQUEST['action']){
+
+    case 'admin_checkcount':
+      require_once('./admin_checkcount.php');
+      break;
+
+    case 'admin_checkvoter':
+      require_once('./admin_checkvoter.php');
+      break;
+
+    case 'admin_dump':
+      require_once('./admin_dump.php');
+      break;
+
+    case 'admin_results':
+      require_once('./admin_results.php');
+      break;
+
+    case 'rollcheck':
+      require_once('./rollcheck.php');
+      break;
+
+    case 'showvotes':
+      require_once('./showvotes.php');
+      break;
+
+    case 'vote':
+      require_once('./vote.php');
+      break;
+
+    case 'ballot':
+    default:
+      require_once('./ballot.php');
+    }
+  }
 ?>

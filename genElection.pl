@@ -1,7 +1,7 @@
 #!/usr/bin/perl -w
 
 # This file is part of the Basic On-line Ballot-box (BOB).
-# $Id: genElection.pl 127 2007-02-20 15:39:15Z dme26 $
+# $Id: genElection.pl 128 2007-02-20 15:46:50Z dme26 $
 # http://www.cl.cam.ac.uk/~dme26/proj/BOB/
 #
 # BOB is free software; you can redistribute it and/or modify it

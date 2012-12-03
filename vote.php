@@ -1,7 +1,7 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
 <!--
-- $Id: vote.php 123 2007-02-12 00:13:09Z dme26 $
+- $Id: vote.php 130 2007-02-20 16:42:40Z dme26 $
 -
 - This file is part of the Basic Online Ballot-box (BOB).
 - http://www.cl.cam.ac.uk/~dme26/proj/BOB/
@@ -10,7 +10,7 @@
 -->
 
 <?php
-  $bob = false; // we expect BOB.php to reassign this as a class instance
+  if(basename($_SERVER['PHP_SELF']) == basename(__FILE__)) $bob = false; // clear $bob if we're not being included ourselves
   require_once("./BOB.php");
 ?>
 

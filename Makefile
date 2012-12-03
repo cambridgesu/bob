@@ -1,4 +1,4 @@
-# $Id: Makefile 127 2007-02-20 15:39:15Z dme26 $
+# $Id: Makefile 130 2007-02-20 16:42:40Z dme26 $
 #
 # BOB Makefile
 
@@ -8,7 +8,7 @@ files = AUTHORS COPYING INSTALL Makefile electionConfig.pm genElection.pl rollch
 genLiveFiles = config.php vote.txt config.txt ballot.txt BOB.txt .htaccess
 genStubFiles = createtable.sql voters.sql printelection.sql
 
-release = 0.6c
+release = 0.6d
 archiveName = BOB$(release).tar.gz
 
 info:
