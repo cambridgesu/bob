@@ -15,7 +15,7 @@
  *
  * Token word list Copyright The Internet Society (1998).
  *
- * Version 0.11.4
+ * Version 0.11.5
  *
  * Copyright (C) authors as above
  * 
@@ -2460,18 +2460,24 @@ EOF;
 	# Function to perform a count based on BLT listings
 	private function countBlt ($ballots, $blts)
 	{
-		# Define the python command used to process a ballot; see http://www.openstv.org/manual and http://groups.google.com/group/openstv/browse_frm/thread/38fcfcdee99ce3ff
+		# Define the Python command used to process a ballot; see http://www.openstv.org/manual and http://groups.google.com/group/openstv/browse_frm/thread/38fcfcdee99ce3ff and http://groups.google.com/group/openstv/browse_thread/thread/c445290557242b9
 		// Available output formats are generateTextResults, generateERSCSVResults and generateHTMLResults
 		// The use of /dev/stdin means this the count will not work on a Windows host
+		// NOTE: This wrapper code works for OpenSTV 1.5 only. Use BOB0.11.4 for OpenSTV 1.4. This wrapper code will apparently not work for the forthcoming OpenSTV 1.6.
 		$pythonCommand = "python -c \"
 import sys
+import os
 sys.path.append('" . $this->documentRoot . $this->countingInstallation . "')
-from ballots import *
-from STV import *
-b = Ballots.loadKnown('/dev/stdin', 'blt')
+os.chdir('" . $this->documentRoot . $this->countingInstallation . "')
+from ballots import Ballots
+from MethodPlugins.ERS97STV import ERS97STV
+from report import HTMLReport
+b = Ballots()
+b.loadKnown(r'/dev/stdin', 'blt')
 e = ERS97STV(b)
 e.runElection()
-txt = e.generateHTMLResults()
+r = HTMLReport(e)
+txt = r.generateReport()
 print txt\"";
 		
 		# Create a droplist
