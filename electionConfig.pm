@@ -1,4 +1,4 @@
-# $Id: electionConfig.pm,v 1.6 2006/10/22 16:54:47 dme26 Exp $
+# $Id: electionConfig.pm 74 2006-10-22 16:54:47Z dme26 $
 # This file is part of BOB: the Basic On-line Ballot-box
 # http://www.cl.cam.ac.uk/~dme26/proj/BOB/
 #####################################################################

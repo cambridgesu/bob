@@ -1,7 +1,7 @@
 #!/usr/bin/perl -w
 
 # This file is part of the Basic On-line Ballot-box (BOB).
-# $Id: genElection.pl,v 1.21 2006/11/09 03:03:34 dme26 Exp $
+# $Id: genElection.pl 83 2007-02-10 11:35:43Z dme26 $
 # http://www.cl.cam.ac.uk/~dme26/proj/BOB/
 #
 # BOB is free software; you can redistribute it and/or modify it
@@ -154,11 +154,14 @@ DirectoryIndex index.html index.htm index.php ballot.html
 <Files ".ht*">
   deny from all
 </Files>
+<Files "dbpass">
+  deny from all
+</Files>
 EOF
     close $f;
 }
 
-if($f=openIfNoFile("dbpass",0660)){
+if($f=openIfNoFile("dbpass",0600)){
     print $f $dbpass;
     close $f;
 }
@@ -726,7 +729,10 @@ print <<EOF;
 To complete installation you need to:
 (1) Ensure that the .htaccess file created will be protecting this directory
     (i.e. Raven authentication is required to access the ballot form)
-(2) Run createtable.sql to make the database tables, e.g.
+(2) Note: the database user you have chosen will need the following database
+    permissions: SELECT, INSERT, UPDATE, CREATE, DROP.
+    
+    Run createtable.sql to make the database tables, e.g.
     (your database password is in the dbpass file)
 
     mysql -u ${dbuser} -p ${dbdb} <createtable.sql
@@ -744,5 +750,6 @@ To complete installation you need to:
     mysql -u ${dbuser} -p ${dbdb} <printelection.sql
 
 (7) Repeat steps (2) to (4), but using the real electoral roll.
+(8) The database permissions now need only be SELECT, INSERT, UPDATE.
 
 EOF

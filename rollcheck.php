@@ -1,7 +1,7 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
 <!--
-- $Id: rollcheck.php,v 1.1 2006/10/31 00:54:13 dme26 Exp $
+- $Id: rollcheck.php 77 2006-10-31 00:54:13Z dme26 $
 -
 - This file is part of the Basic Online Ballot-box (BOB).
 - http://www.cl.cam.ac.uk/~dme26/proj/BOB/

@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.13 2006/10/31 00:55:04 dme26 Exp $
+# $Id: Makefile 109 2007-02-10 22:45:50Z dme26 $
 #
 # BOB Makefile
 
@@ -8,7 +8,7 @@ files = AUTHORS COPYING INSTALL Makefile electionConfig.pm genElection.pl rollch
 genLiveFiles = config.php vote.txt ballot.html .htaccess
 genStubFiles = createtable.sql voters.sql printelection.sql
 
-release = 0.5
+release = 0.52
 archiveName = BOB$(release).tar.gz
 
 info:
@@ -25,9 +25,9 @@ info:
 archive:	configPerms $(archiveName)
 
 configPerms:
-	chmod 664 AUTHORS COPYING INSTALL Makefile vote.php
-	chmod 660 electionConfig.pm 
-	chmod 750 genElection.pl 
+	chmod 644 AUTHORS COPYING INSTALL Makefile rollcheck.php vote.php
+	chmod 600 electionConfig.pm 
+	chmod 700 genElection.pl 
 
 election:
 	./genElection.pl
