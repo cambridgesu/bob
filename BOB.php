@@ -28,7 +28,7 @@
 <?php
 class BOB {
   // constructor
-  function BOB($dbdb,$dbhost,$dbuser,$electionInfo,$emailRO,$emailTech,$ename,$endBallot,$htmlNotRegistered,$htmlPostBallot,$htmlPreBallot,$htmlRO,$htmlTech,$startBallot,$title,$adminDuringElectionOK,$positionInfo,$ro) {
+  function BOB($dbdb,$dbhost,$dbuser,$electionInfo,$emailRO,$emailTech,$ename,$endBallot,$htmlNotRegistered,$htmlPostBallot,$htmlPreBallot,$htmlRO,$htmlTech,$startBallot,$title,$adminDuringElectionOK,$positionInfo,$ro,$eOfficials,$viewBallot) {
     $this->dbdb = $dbdb;
     $this->dbhost = $dbhost;
     $this->dbuser = $dbuser;
@@ -46,7 +46,9 @@ class BOB {
     $this->title = $title;
     $this->adminDuringElectionOK = $adminDuringElectionOK;
     $this->positionInfo = $positionInfo;
-    $this->ro = $ro;
+    $this->ro = trim ($ro);
+    $this->eOfficials = $eOfficials;
+	$this->viewBallot = $viewBallot;
 
     // set a dummy crsid value if the authentication read is unsuccessful
     ($this->crsid = $_SERVER['REMOTE_USER']) or ($this->crsid = "testVoter");
@@ -55,7 +57,7 @@ class BOB {
 
   // open the database
   function openDB() {
-    if(!$dbpass = rtrim(file_get_contents('dbpass'))) return($this->err('Could not read database password!'));
+    if(!$dbpass = rtrim(file_get_contents('./dbpass'))) return($this->err('Could not read database password!'));
     if(!$db = mysql_connect($this->dbhost, $this->dbuser, $dbpass)) return($this->err('Error opening database connection!'));
     if(!mysql_select_db($this->dbdb,$db)) return($this->err("Error selecting database!"));
     return true;
@@ -63,6 +65,7 @@ class BOB {
 
   // check whether a given voter (or the current user) is permitted to vote and has not already
   function checkVotingPermission($c = false){
+	if ((!$c) && $this->userIsElectionOfficial()) {return true;}
     if(!$c) $c=$this->crsid;
     echo "<p> Checking voting permission for $c ...";
     // Read information about this CRSID's voting from database.
@@ -71,6 +74,14 @@ class BOB {
     if($row['voted']!=0) return($this->fail("our records indicate that you have already voted. Contact the $this->htmlRO if you disagree.</p>"));
     echo "you are allowed to vote.</p>\n"; // this voter is listed and hasn't voted
     return true;
+  }
+  
+  // check whether the current user is an election official in the list
+  function userIsElectionOfficial(){
+  	$c=$this->crsid;
+	$officials = explode(' ', trim($this->eOfficials));
+	$userIsElectionOfficial = (in_array ($c,$officials));
+	return $userIsElectionOfficial;
   }
 
   function err($e) {
@@ -81,9 +92,170 @@ class BOB {
     return false;
   }
   
+  // check whether doing admin actions is appropriate
+  function adminOK(){
+    return $this->adminDuringElectionOK || $this->beforeElection() || $this->afterElection();
+  }
+
+  function afterBallotView(){ return $this->viewBallot < $this->loadtime; }
+  function afterElection(){ return $this->endBallot < $this->loadtime; }
+  function beforeElection(){ return $this->loadtime < $this->startBallot; }
+  function duringElection(){ return $this->loadtime >= $this->startBallot && $this->endBallot >= $this->loadtime; }
+
+  // public entry point for voting workflow
+  function voteWF(){
+	
+    // check that the ballot is open.
+    if($this->beforeElection()) return($this->fail($this->htmlPreBallot));
+    if($this->afterElection()) return($this->fail($this->htmlPostBallot));
+    
+	// open the database or end
+    if(!$this->openDB()) return false;
+	
+	// Check whether the user is in the list and whether they've already voted
+    if(!$this->checkVotingPermission()) return false;
+	
+	// Remind election officials that they cannot vote
+	if ($this->userIsElectionOfficial ()) {echo '<p style="color: red;">Note: you are accessing this as an election official. As such, you cannot vote, only see the voting screen.</p>';}
+	
+	// Check for any problems if the form has been posted
+	$problems = array ();
+    if (!empty ($_POST)) {
+		
+		// Checks done to prevent invalid votes from crafted forms being cast
+		
+		// Define what a referendum looks like in terms of the available candidates
+		$referendumCandidates = array ('0' => '(blank)', '1' => 'Yes', '2' => 'No');
+		
+		// Confirm that what is posted matches the list of candidates in the config file
+		// Loop through each vote set specified in the config file
+		foreach ($this->electionInfo as $voteSet => $candidates) {
+			$voteSet = $voteSet + 1;	// Adjust the array indexing - the generated <select> boxes start at [1] not [0]
+			
+			// Loop through each candidate specified in the config file
+			foreach ($candidates as $candidateNumber => $candidate) {
+				
+				// Skip the first 'candidate' as that is actually a heading
+				if ($candidateNumber == 0) {continue;}
+				
+				// Determine whether electionInfo->voteSet->candidateNumber exists, i.e. that _POST['v'][candidateNumber] exists, as it should
+				$structureOk = (isSet ($_POST['v']) && is_array ($_POST['v']) && isSet ($_POST['v'][$voteSet]) && is_array ($_POST['v'][$voteSet]) && isSet ($_POST['v'][$voteSet][$candidateNumber]));
+				
+				// If the structure does not match, then the user has probably posted a user-crafted form; set the error message and break out of the inner and outer loop
+				if (!$structureOk) {
+					$problems[] = "Your browser does not appear to be submitting the entire page. Please try again.";
+					break 2;
+				}
+				
+				// Ensure that the selection given is in the list in the config file, e.g. 0 for no vote or 1/2/3 for candidates 1/2/3
+				$availableCandidates = array_keys (($candidate == 'referendum') ? $referendumCandidates : $candidates);
+				if (!in_array ($_POST['v'][$voteSet][$candidateNumber], $availableCandidates)) {
+					$problems[] = "Your browser appeared to post a non-existent option. Please try again.";
+					break 2;
+				}
+				
+				// Ensure that no additional preference have been added in, to ensure that eventually submitted data matches the database structure
+				$expectedPreferencesTotal = (($candidate == 'referendum') ? 1 : count ($candidates) - 1);
+				if (count ($_POST['v'][$voteSet]) != $expectedPreferencesTotal) {	// _POST['v'][$voteSet] is already confirmed as an array if this code is reached
+					$problems[] = "Your browser appeared to post more preferences than exist. Please try again.";
+					break 2;
+				}
+			}
+			
+			// Ensure that no additional votesets have been added in, to ensure that eventually submitted data matches the database structure
+			if (count ($_POST['v']) != count ($this->electionInfo)) {	// _POST['v'] is already confirmed as an array if this code is reached
+				$problems[] = "Your browser appeared to post more votes than exist. Please try again.";
+				break;
+			}
+			
+			// By this point, we know we are using a non-crafted form (or a crafted form which contains the same submittable values, pointlessly), else we would be out of the loop
+			// Do the following checks as recommended by an ERS member:
+			
+			
+			// 1. Prevent a voter putting the same candidate twice
+			
+			// Check for duplicate non-0 values - using the function at http://www.php.net/manual/en/function.array-unique.php#28892
+			$checkKeysUniqueComparison = create_function('$value','if ($value > 1) return true;');
+			// Take the 0's out of the cast votes for checking purposes
+			$votesCast = array ();
+			foreach ($_POST['v'][$voteSet] as $key => $value) {
+				if ($value == '0') {continue;}	// Next item in loop
+				$votesCast[$key] = $value;
+			}
+			// Check for duplicated values
+			$duplicateValues = array_keys (array_filter (array_count_values ($votesCast), $checkKeysUniqueComparison)); 
+			if ($duplicateValues) {
+				$problems[] = "You set a candidate twice, in the '{$candidates[0]}' vote.";
+			}
+			
+			
+			// 2. Prevent a voter leaving out a preference in sequence
+			$allZeroSoFar = true;
+			foreach ($_POST['v'][$voteSet] as $key => $value) {
+				if ($value == '0') {
+					$allZeroSoFar = false;
+					continue;	// Next item in loop
+				}
+				if ((!$allZeroSoFar) && ($value != '0')) {
+					$problems[] = "You left out a preference in sequence, in the '{$candidates[0]}' vote.";
+					break;	// Don't bother checking any more
+				}
+			}
+		}
+		
+		// Ensure that the voter has confirmed their vote
+		if (!isSet ($_POST['confirmvote']) || $_POST['confirmvote']!='on') {
+	    	$problems[] = "You have not confirmed your vote.";
+		}
+    	
+		// Show any problems if found
+		if ($problems) {
+			echo '<div class="problem">';
+			echo "<p>The following " . (count ($problems) == 1 ? 'problem was' : 'problems were') . " found:</p>";
+			echo '<ul><li>' . implode ('</li><li>', $problems) . '</li></ul>';
+			echo "<p>The vote has therefore not been cast yet. <strong>Please correct the " . (count ($problems) == 1 ? 'problem' : 'problems') . " in the form below and try again.</strong></p>";
+			echo '</div>';
+		}
+	}
+	
+	// Show the ballot page if not posted or problems found, then end
+	if (empty ($_POST) || $problems) {
+		$this->ballotPage();
+		return;
+	}
+	
+	// Election officials cannot vote
+	if ($this->userIsElectionOfficial ()) {return false;}
+	
+	// add the vote
+    $openTrans = false;
+    $retval = $this->voteWFinternal($openTrans);
+    $openTrans and (mysql_query("ROLLBACK") or $this->err("Unable to roll back the database transaction."));
+    return $retval;
+  }
+
   // Ballot page
-  function ballotPage($action = "vote.php"){
-    echo '<form action="',$action,'" method="post">',"\n\n";
+  function ballotPage(){
+    
+	echo <<<EOF
+	<p>This system provides a means to forward your anonymised votes to the returning officer, who for this election is {$this->ro}. <a href="#disclaimer">Please read the disclaimer below</a>.  The Returning Officer will be able to see who has voted but will not be able to tell who has cast which votes.</p>
+	<p>When you have successfully placed your vote, you will be emailed a sequence of random-looking short words - your "voting token". This system does not store the connection between your voting token and your identity, however it does email your voting token alongside your vote to the returning officer (and store it in a database to protect against email fraud).  When polls have closed, the list of all the votes cast will be made available - because only you will know your voting token, you will be able to check that your vote was correctly included.</p>	<hr />
+	
+	<h3>How to vote</h3>
+	<p>Voting is by the Single Transferable Vote system described in Chapter 1 of the Ordinances of the University of Cambridge.</p>
+	<ul>
+		<li>Next to number 1 (in the preference column for a given post), select the name of the candidate to whom you give your first preference (using the pull-down selection menu controls).</li>
+		<li>You may also enter, against preference ranks 2, 3 and so on, the names of other candidates in the order you wish to vote for them.</li>
+		<li>Continue until you have voted for those candidates you wish to vote for, and leave any remaining boxes blank. You are under no obligation to vote for all candidates.</li>
+		<li>Repeat this process for each post listed.</li>
+		<li>Some elections may list a candidate named "RON". This acronym expands to "Re-Open Nominations". You may vote for RON as you would any other candidate. Should RON be 'elected', the position will be re-opened, and will be decided at a subsequent election.</li>
+		<li>The order of your preferences is crucial. Later preferences will only be considered if an earlier preference has qualified for election or has been eliminated from the election due to gaining an insufficient number of votes. </li>
+		<li>When you have completed this form CHECK IT.</li>
+		<li>When you have checked the form, click on the 'Cast my vote' button.</li>
+	</ul>
+EOF;
+	
+	echo '<form action="vote.php" method="post">',"\n\n";
 	
 	$i = 0;	// Start a count of vote groups
 	foreach ($this->electionInfo as $options) {	// Loop through each vote group
@@ -91,112 +263,138 @@ class BOB {
 		$i++;	// Advance the vote group counter
 		if (!$options) {continue;}	// If the array is empty, move on
 		
-		$selectOpts = "\t\t\t\t\t<option value=\"0\" class=\"blank\">(blank)</option>\n";
-		if($options[1] == 'referendum'){
-		    $selectOpts .= "\t\t\t\t\t<option value=\"1\">Yes</option>\n\t\t\t\t\t<option value=\"2\">No</option>\n";
-		    
-		    // Create the HTML, creating as many boxes as requested
-		    echo "<h2>{$options[0]}</h2>\n";
-		    echo "<table class=\"vote v{$i}\">\n";
-		    echo "\t\t<tr>\n\t\t\t<th>Referendum decision:</th>\n\t\t\t<td class=\"candidate\">\n\t\t\t\t<select name=\"v[{$i}][1]\" OnMouseWheel=\"PreventScroll(event);\">\n{$selectOpts}\t\t\t\t</select>\n\t\t\t</td>\n\t\t</tr>\n";
-		    echo "</table>\n\n";
-		}else{
-		  foreach ($options as $index => $option) {
-		    if ($index == 0) {continue;}	// Miss the heading out
-		    $selectOpts .= "\t\t\t\t\t<option value=\"{$index}\">{$option}</option>\n";
-		  }
-		  
-		  // Define the number of boxes
-		  $boxes = count ($options) - 1;	// Number of options, minus one (the first - which is the heading)
+		# Set the heading
+		echo "<h2>{$options[0]}</h2>\n";
 		
-		  // Create the HTML, creating as many boxes as requested
-		  echo "<h2>{$options[0]}</h2>\n";
-		  echo "<table class=\"vote v{$i}\">\n";
-		  echo "\t\t<tr>\n\t\t\t<th>Preference</th>\n\t\t\t<th>Candidate</th>\n\t\t</tr>\n";
-		  for ($box = 1; $box <= $boxes; $box++) {
-		    echo "\t\t<tr class=\"c{$box} " . (($box % 2) ? 'codd' : 'ceven' ) . "\">\n\t\t\t<td class=\"preference\">{$box}</td>\n\t\t\t<td class=\"candidate\">\n\t\t\t\t<select name=\"v[{$i}][{$box}]\" OnMouseWheel=\"PreventScroll(event);\">\n{$selectOpts}\t\t\t\t</select>\n\t\t\t</td>\n\t\t</tr>\n";
-		  }
-		  echo "</table>\n\n";
+		// Replace the heading as the blank option
+		$options[0] = '(blank)';
+		
+		// Define the number of boxes
+		$boxes = count ($options) - 1;	// Number of boxes should match the number of candidates, minus the blank option
+	  	
+		// Deal with the special case of a referendum, and define what a referendum looks like in terms of the available candidates
+		$isReferendum = ($options[1] == 'referendum');
+		if ($isReferendum) {
+			$options = array (0 => '(blank)', 1 => 'Yes', 2 => 'No');
+			$boxes = 1;
 		}
+		
+		// Create the HTML, creating as many boxes as requested
+		echo "<table class=\"vote v{$i}\">\n";
+		if (count ($options) > 11) {echo "<p class=\"comment\">Note: there are " . (count ($options) - 1) . " candidates standing in this election. Your browser may require you to scroll to see all.</p>";}	// IE6/Win in Classic Theme, i.e. not XP standard, only displays 11 options at once
+		if (!$isReferendum) {echo "\t\t<tr>\n\t\t\t<th>Preference</th>\n\t\t\t<th>Candidate</th>\n\t\t</tr>\n";}
+		for ($box = 1; $box <= $boxes; $box++) {
+			
+			// Determine what option has been selected for this box, if any
+			$itemChosen = ((isSet ($_POST['v']) && is_array ($_POST['v']) && isSet ($_POST['v'][$i]) && is_array ($_POST['v'][$i]) && isSet ($_POST['v'][$i][$box])) ? $_POST['v'][$i][$box] : '');
+			
+			// Create the option boxes
+			$selectOpts = '';
+			foreach ($options as $index => $option) {
+			    $selectOpts .= "\t\t\t\t\t<option value=\"{$index}\"" . ($index == $itemChosen ? ' selected="selected"' : '') . ">" . htmlentities ($option) . "</option>\n";
+			}
+		    echo "\t\t<tr class=\"c{$box} " . (($box % 2) ? 'codd' : 'ceven' ) . "\">\n\t\t\t" . ($isReferendum ? '<th>Referendum decision:</th>' : "<td class=\"preference\">{$box}</td>") . "\n\t\t\t<td class=\"candidate\">\n\t\t\t\t<select name=\"v[{$i}][{$box}]\" onmousewheel=\"PreventScroll(event);\">\n{$selectOpts}\t\t\t\t</select>\n\t\t\t</td>\n\t\t</tr>\n";
+		}
+		echo "</table>\n\n";
 	}
+	
+	echo <<<EOF
+		<hr />
+		<p><font color="red"><b>Please double-check your choices before submitting your vote!</b></font> Due to the anonymity built into this voting system, it is not possible to correlate your response after you vote.</p>
+		<input type="checkbox" name="confirmvote" id="confirmvote" /><label for="confirmvote">I have checked my vote.</label>
+		<p>After you click "Cast my vote", your vote will be passed anonymously to the Returning Officer. You will receive a blind copy by email. This will allow you to check we have recorded your vote correctly by confirming to yourself that the printed sheets that will be posted after the votes have been counted. Any queries should be directed to the Returning Officer.</p>
+		<p><input value="Cast my vote" type="submit" /></p>
+	</form>
+	
+	<hr />
+	
+	<a name="disclaimer"></a>
+	<p><b>Disclaimer:</b> The (extremely minimal) software behind this voting system has been checked independently, and has been agreed to be a system which should avoid, but will at least detect voting irregularities. The service is hosted on a computer that is not under the direct administrative control of the organisation running the election. Evidence can be acquired from external system administrators that the software is not modified during the election.  If you do not trust this system, you are advised to contact the Returning Officer. As stated in the GPL license, this software comes with no guarantees.  Feel free to examine the PHP code that drives the various pages:</p>
+EOF;
+	
+	echo '<ul>';
+	$files = array('vote','BOB','config');
+	foreach($files as $f){
+	  $md5 = md5 (file_get_contents ("./$f.php"));
+	  echo "<li><a href=\"{$f}.txt\" target=\"_blank\" title=\"[Link opens in a new window]\">{$f}.php</a> has MD5 sum <kbd>{$md5}</kbd></li>";
+	}
+	echo '</ul>';
   }
   
-  // public entry point for voting workflow
-  function voteWF(){
-    $openTrans = false;
-    $retval = $this->voteWFinternal($openTrans);
-    $openTrans and (mysql_query("ROLLBACK") or $this->err("Unable to roll back the database transaction."));
-    return $retval;
+  
+  // Function to generate a unique token
+  function generateUniqueToken ()
+  {
+	// Check that the token isn't already in use
+	$tokenChosen = false;
+	while (!$tokenChosen) {
+		$token = $this->generateToken();
+	    if(!($result = mysql_query("SELECT COUNT(token) AS total FROM {$this->ename}vote WHERE token='$token'"))) return($this->err("Token checking failed. The vote submission could not proceed."));
+	    if(!($row = mysql_fetch_array($result))) return($this->err("Token checking failed (2). The vote submission could not proceed."));
+		if ($row['total'] == '0') {$tokenChosen = true;}	// If there are no matching tokens, then accept this one
+	}
+	
+	return $token;
   }
-
-  // check whether doing admin actions is appropriate
-  function adminOK(){
-    return $this->adminDuringElectionOK || $this->beforeElection() || $this->afterElection();
+  
+  // Function to generate a (potentially non-unique) token
+  function generateToken ($words = 4){
+    $token='';
+    for($i=0; $i<$words; $i++){
+      $token.=(($i==0)?'':' ').$this->rfc2289words[mt_rand(0,2047)];
+    }
+    return $token;
   }
-
-  function afterElection(){ return $this->endBallot < $this->loadtime; }
-  function beforeElection(){ return $this->loadtime < $this->startBallot; }
-  function duringElection(){ return $this->loadtime >= $this->startBallot && $this->endBallot >= $this->loadtime; }
-
+  
+  
   // internal voting workflow
   function voteWFinternal(&$openTrans){
     mt_srand();
 
-    // check that the ballot is open.
-    if($this->beforeElection()) return($this->fail($this->htmlPreBallot));
-    if($this->afterElection()) return($this->fail($this->htmlPostBallot));
-    
-    if($_REQUEST['confirmvote']!='on') return($this->fail("<p>You have not confirmed your vote. Please click your web browser's back button <a href=\"ballot.html\">to return to the ballot page</a>.</p>"));
-    
-    if(!$this->openDB()) return false;
-    if(!$this->checkVotingPermission()) return false;
-
     // generate token
-    $token="";
-    for($i=0; $i<4; $i++){
-      $token.=(($i==0)?'':' ').$this->rfc2289words[mt_rand(0,2047)];
-    }
-    echo '<p>Recording your vote ...';
-    // find _REQUEST fields of the form v[voteNumber][preferenceValue]=candidateNumber
+    if (!$token = $this->generateUniqueToken()) {return false;}
+	echo '<p>Recording your vote ...';
+    // find _POST fields of the form v[voteNumber][preferenceValue]=candidateNumber
     $coln="token";
     $colv="'$token'";
     
-    foreach($_REQUEST['v'] as $k1=>$v1) {
+	// Loop through the (now-validated) POST array
+    foreach($_POST['v'] as $k1=>$v1) {
       if(is_array($v1)){
-	foreach($v1 as $k2=>$v2){
-	  if(!is_array($v2)){
-	    $v2 = is_numeric($v2)?((int)$v2):0;
-	    $k1 = (int)$k1;
-	    $k2 = (int)$k2;
-	    $coln.=",v${k1}p${k2}";
-	    $colv.=",$v2";
-	  }
-	}
+		foreach($v1 as $k2=>$v2){
+		  if(!is_array($v2)){
+		    $v2 = is_numeric($v2)?((int)$v2):0;
+		    $k1 = (int)$k1;
+		    $k2 = (int)$k2;
+		    $coln.=",v${k1}p${k2}";
+		    $colv.=",$v2";
+		  }
+		}
       }
     }
     
     // Start transaction.
-    if(!($this->openTrans = mysql_query("BEGIN WORK"))) return($this->err("Failed to start database transaction."));
+    if(!($openTrans = mysql_query("BEGIN WORK"))) return($this->err("Failed to start database transaction."));
     
     // record data from the ballot HTML form along with random token.
     if(!(mysql_query("INSERT INTO {$this->ename}vote ($coln) VALUES ($colv)"))
        or mysql_affected_rows() != 1) return($this->err("Database vote insert failure."));
     
-    // write of ballot to database was OK.
-    echo "done.</p><p>Updating your status as having voted ...";
-    
     // modify the voter table to indicate this vote has been cast
     if(!(mysql_query("UPDATE {$this->ename}voter SET voted='1' WHERE crsid='$this->crsid' AND voted='0'"))
-       or mysql_affected_rows() != 1) return($this->err("Recording voter as having voted failed."));
-    if(!(mysql_query("COMMIT"))) return($this->err("Transaction failed to commit."));
-    $this->openTrans = false;
+       or mysql_affected_rows() != 1) return($this->err("Recording voter as having voted failed. As such, the vote itself has not been stored either."));
+	if(!(mysql_query("COMMIT"))) return($this->err("Transaction failed to commit."));
+    $openTrans = false;
+    
+    // write of ballot to database was OK.
+    echo "done.</p><p>Updating your status as having voted ...";
     
     // update of voter having voted was successful
     echo <<<EOF
 done.</p>
 <p>Our database now indicates that it has successfully recorded your vote and, separately, that you have voted.</p>
 
-<p>We will now attempt to read back your vote from our database, and email it to the returning officer, blind-carbon-copied (BCC) to your Hermes address.
+<p>We will now attempt to read back your vote from our database, and email it to the returning officer, blind-carbon-copied (BCC) to your @cam address.
 In the highly unusual case that there is a failure somewhere in the remainder of this voting process, you should keep a record of your proof-of-voting token "<b>$token</b>" and use it to check your vote really was recorded correctly when the count sheet is posted up after voting has closed.</p>
 
 <p>Reading back your vote ...
@@ -211,7 +409,9 @@ Below you will find a record of each of the selections you made on the
 ballot web-page in order. Each ballot choice is represented in a
 computer-parsable representation, with an equivalent verbal description
 to the right of each equals sign. Your voting token is "$token".
- 
+
+You should not disclose this e-mail or your voting token to others.
+
 
 EOF;
 
@@ -248,6 +448,8 @@ EOF;
 done.</p>
 
 <p>If you do not receive a confirmation email containing the text in the box below within a minute or two, we recommend that you save or print this webpage as an alternative personal record of your vote.</p>
+<p>You should not disclose this e-mail or your voting token to others.</p>
+<p><strong>When you have finished reading this page, including text below, you should ideally <a href="logout.html">logout</a> then close your browser.</strong></p>
 
 <div class="votemsg">
 <pre>
@@ -266,7 +468,8 @@ EOF;
   // public entry point for checking the electoral roll
   function rollcheckWF($c = ''){
     if(!$this->openDB()) { return false; }
-    return $this->checkVotingPermission($c);
+	$c = addslashes ($c);
+	return $this->checkVotingPermission($c);
   }
 
   // admin entry to return current vote count
@@ -287,7 +490,7 @@ EOF;
       }
     }
     echo "</pre>\n";
-    $this->electionInfo[$matches[1]-1][0];
+    //$this->electionInfo[$matches[1]-1][0];
   }
 
   // return an array containing the election data
@@ -302,11 +505,11 @@ EOF;
     while($row = mysql_fetch_assoc($result)){
       $a2 = array(); // array($row['token']);
       foreach( $prefsizes as $v => $num ){
-	$a = array();
-	for( $i=1; $i<=$num; $i++){
-	  array_push($a,$row["v".(1+$v)."p{$i}"]);
-	}
-	array_push($a2,$a);
+		$a = array();
+		for( $i=1; $i<=$num; $i++){
+		  array_push($a,$row["v".(1+$v)."p{$i}"]);
+		}
+		array_push($a2,$a);
       }
       $electionData[$row['token']] = $a2;
     }
@@ -334,6 +537,11 @@ EOF;
       echo "\n";
     }
     echo "</pre><p>Total number of votes cast was $count</p>";
+	
+    if(!($result = mysql_query("SELECT count(*) as total FROM {$this->ename}voter"))) return($this->err("Vote total read failed."));
+	if(!($row = mysql_fetch_array($result))) return($this->err("Vote total read failed (2)."));
+	echo "<p>Total number of voters on the roll is: {$row['total']}</p>";
+	
     return true;
   }
 
@@ -635,45 +843,8 @@ EOF;
 }
 
   // initialise all variables (i.e. thwart register_globals attacks)
-  $dbdb=$dbhost=$dbuser=$electionInfo=$emailRO=$emailTech=$ename=$endBallot=$htmlNotRegistered=$htmlPostBallot=$htmlPreBallot=$htmlRO=$htmlTech=$startBallot=$title=$adminDuringElectionOK=$positionInfo=$ro='';
-  require_once("config.php");
-  $bob = new BOB($dbdb,$dbhost,$dbuser,$electionInfo,$emailRO,$emailTech,$ename,$endBallot,$htmlNotRegistered,$htmlPostBallot,$htmlPreBallot,$htmlRO,$htmlTech,$startBallot,$title,$adminDuringElectionOK,$positionInfo,$ro);
+  $dbdb=$dbhost=$dbuser=$electionInfo=$emailRO=$emailTech=$ename=$endBallot=$htmlNotRegistered=$htmlPostBallot=$htmlPreBallot=$htmlRO=$htmlTech=$startBallot=$title=$adminDuringElectionOK=$positionInfo=$ro=$eOfficials=$viewBallot='';
+  require_once('./config.php');
+  $bob = new BOB($dbdb,$dbhost,$dbuser,$electionInfo,$emailRO,$emailTech,$ename,$endBallot,$htmlNotRegistered,$htmlPostBallot,$htmlPreBallot,$htmlRO,$htmlTech,$startBallot,$title,$adminDuringElectionOK,$positionInfo,$ro,$eOfficials,$viewBallot);
 
-  if(basename($_SERVER['PHP_SELF']) == basename(__FILE__)) {
-    // we're running top-level
-    switch($_REQUEST['action']){
-
-    case 'admin_checkcount':
-      require_once('./admin_checkcount.php');
-      break;
-
-    case 'admin_checkvoter':
-      require_once('./admin_checkvoter.php');
-      break;
-
-    case 'admin_dump':
-      require_once('./admin_dump.php');
-      break;
-
-    case 'admin_results':
-      require_once('./admin_results.php');
-      break;
-
-    case 'rollcheck':
-      require_once('./rollcheck.php');
-      break;
-
-    case 'showvotes':
-      require_once('./showvotes.php');
-      break;
-
-    case 'vote':
-      require_once('./vote.php');
-      break;
-
-    case 'ballot':
-    default:
-      require_once('./ballot.php');
-    }
-  }
 ?>

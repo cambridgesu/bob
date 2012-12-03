@@ -26,6 +26,11 @@ $ro=<<EOF;
 someone trustworthy
 EOF
 
+# Returning officer as referred to via HTML (needs $emailRO defined first)
+$htmlRO=<<EOF;
+<a href="mailto:$emailRO">returning officer ($emailRO)</a>
+EOF
+
 # Election officials' CRSIDs in a space-separated list.
 $eofficials='';
 
@@ -33,10 +38,13 @@ $eofficials='';
 $adminDuringElectionOK=FALSE;
 
 # Start time (YYYY-MM-DD HH:MM)
-$ballotStart = '2005-11-02 00:00';
+$ballotStart = '2007-01-01 00:00';
 
 # End time (YYYY-MM-DD HH:MM)
-$ballotEnd = '2005-11-02 20:00';
+$ballotEnd = '2007-01-02 20:00';
+
+# Time when the votes cast can be viewed (YYYY-MM-DD HH:MM), probably the same as ballotEnd above
+$ballotView = '2007-01-03 08:00';
 
 # Pre ballot open message
 $htmlPreBallot=<<EOF;

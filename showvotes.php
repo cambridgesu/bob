@@ -10,7 +10,7 @@
 -->
 
 <?php
-  if(basename($_SERVER['PHP_SELF']) == basename(__FILE__)) $bob = false; // clear $bob if we're not being included ourselves
+  $bob = false;
   require_once("./BOB.php");
   $title .= ' - view votes';
 ?>
@@ -20,19 +20,20 @@
     <title><?php echo $title; ?></title>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <style type="text/css">
-    pre {border:1px solid #bbbbbb; background: #eeeeee; padding: 4px;}
+	  body {font-family: sans-serif;}
+	  pre {border:1px solid #bbbbbb; background: #eeeeee; padding: 4px;}
     </style>
   </head>
   <body>
     <h1><?php echo $title; ?></h1>
-<?php if($bob->afterElection()){ ?>
+<?php if($bob->afterBallotView()){ ?>
       <p>Vote tokens and the votes they are recorded with are shown below</p>
     <h2>Key to vote data</h2>
       <?php $bob->voteDataKey(); ?>
     <h2>List of votes (column vXpY is the Yth preference for election X)</h2>
       <?php $bob->listVotes();      
     }else{
-?><p>The election has not finished, so viewing the complete ballot box is not yet possible.</p><?php
+?><p>Viewing the ballot box is not yet possible.</p><?php
     } 
 ?>
     <hr />

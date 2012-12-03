@@ -8,7 +8,7 @@ files = AUTHORS COPYING INSTALL Makefile electionConfig.pm genElection.pl rollch
 genLiveFiles = config.php vote.txt config.txt ballot.txt BOB.txt .htaccess
 genStubFiles = createtable.sql voters.sql printelection.sql
 
-release = 0.6d
+release = 0.7d
 archiveName = BOB$(release).tar.gz
 
 info:

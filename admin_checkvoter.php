@@ -27,7 +27,7 @@
     <h1><?php echo $title; ?></h1>
 <?php
     if($bob->adminOK()){
-      $crsid = $_REQUEST['crsid'];
+      $crsid = (isSet ($_POST['crsid']) ? $_POST['crsid'] : '');
       if($crsid) { 
 	$bob->rollcheckWF($crsid);
 	echo "<hr />\n";

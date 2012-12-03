@@ -10,22 +10,43 @@
 -->
 
 <?php
-  if(basename($_SERVER['PHP_SELF']) == basename(__FILE__)) $bob = false; // clear $bob if we're not being included ourselves
+  $bob = false;
   require_once("./BOB.php");
 ?>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <title><?php echo $title; ?></title>
+    <title><?php echo $bob->title; ?></title>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <style type="text/css">
-    .votemsg {border:1px solid #bbbbbb; background: #eeeeee; padding: 4px;}
+      body {font-family: sans-serif;}
+	  table.vote {border: 1px; border-collapse: collapse; border-spacing: 0px;}
+      table.vote td, table.vote th {border: 2px #ddd solid; padding: 3px;}
+	  .votemsg {border:1px solid #bbbbbb; background: #eeeeee; padding: 4px;}
+	  div.problem {color: red; border: 2px solid red; padding: 2px 10px;}
+	  option {color: #603;}
+	  h2 {font-size: 1.3em; margin-top: 2.2em; margin-bottom: 0.6em;}
+	  .comment {color: #444;}
     </style>
+	
+	<script type="text/javascript">
+		// Prevent mouse wheel scrolling when focus is on a select widget
+		function PreventScroll(e)
+		{
+			var ie = document.all;
+			if(ie)
+			{
+				e = window.event;
+				e.returnValue = false;
+				e.cancelBubble = true;
+			}
+		}
+	</script>
   </head>
   <body>
-    <h1><?php echo $title; ?></h1>
+    <h1><?php echo $bob->title; ?></h1>
 <?php $bob->voteWF(); /* Voting workflow */ ?>
     <hr />
-    <address><?php echo 'Contact: ',$htmlTech,' or the ',$htmlRO; ?></address>
+    <?php echo "<address>Contacts: {$bob->htmlTech} or {$bob->htmlRO}</address>\n"; ?>
   </body>
 </html>

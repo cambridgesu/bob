@@ -10,7 +10,7 @@
 -->
 
 <?php
-  if(basename($_SERVER['PHP_SELF']) == basename(__FILE__)) $bob = false; // clear $bob if we're not being included ourselves
+  $bob = false;
   require_once("./BOB.php");
   $title .= ' - roll check page';
 ?>
@@ -20,7 +20,8 @@
     <title><?php echo $title; ?></title>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <style type="text/css">
-    .votemsg {border:1px solid #bbbbbb; background: #eeeeee; padding: 4px;}
+      body {font-family: sans-serif;}
+      .votemsg {border:1px solid #bbbbbb; background: #eeeeee; padding: 4px;}
     </style>
   </head>
   <body>

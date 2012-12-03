@@ -18,7 +18,7 @@
 # along with BOB; if not, write to the Free Software Foundation,
 # Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
 
-$title=$ename=$emailRO=$emailTech=$ro=$eofficials=$ballotStart =$ballotEnd =$htmlPreBallot=$htmlPostBallot=$htmlNotRegistered=$dbhost=$dbdb=$dbuser=$dbpass=$election=$adminDuringElectionOK='';
+$title=$ename=$emailRO=$emailTech=$ro=$eofficials=$ballotStart= $ballotEnd= $ballotView= $htmlPreBallot=$htmlPostBallot=$htmlNotRegistered=$dbhost=$dbdb=$dbuser=$dbpass=$election=$adminDuringElectionOK='';
 
 if(-f "electionConfig.pm"){
     print "+ Loading election configuration.\n";
@@ -130,12 +130,17 @@ EOF
 EOF
     }
 
+	chomp ($title);
     print $f <<EOF;
 AACookieKey "$ckey"
 AADescription "$title"
 AuthType Ucam-WebAuth
 Require valid-user
-DirectoryIndex index.html index.htm index.php ballot.php
+AAForceInteract On
+<Files logout.html>
+  SetHandler AALogout
+</Files>
+DirectoryIndex index.html index.htm index.php vote.php
 <Files ".ht*">
   deny from all
 </Files>
@@ -192,9 +197,10 @@ EOV;
 \$htmlTech=<<<EOV
 <a href="mailto:$emailTech">technical administrator ($emailTech)</a>
 EOV;
-\$dbhost="${dbhost}";
-\$dbuser="${dbuser}";
-\$dbdb="${dbdb}";
+\$eOfficials='${eofficials}';
+\$dbhost='${dbhost}';
+\$dbuser='${dbuser}';
+\$dbdb='${dbdb}';
 \$adminDuringElectionOK=${adminDuringElectionOK};
 ${electionPHP}
 ${positionsPHP}
@@ -218,6 +224,11 @@ EOF
 	print $f "\$endBallot = mktime($4,$5,0,$2,$3,$1);\n"
     }else{
 	print "! Unable to parse \$ballotEnd date.\n";
+    }
+    if($ballotView =~ /(\d{4})-0*(\d{1,2})-0*(\d{1,2}) 0*(\d{1,2}):0*(\d{1,2})/){
+	print $f "\$viewBallot = mktime($4,$5,0,$2,$3,$1);\n"
+    }else{
+	print "! Unable to parse \$ballotView date.\n";
     }
     close $f;
 }
@@ -260,7 +271,6 @@ token VARCHAR(32) NOT NULL PRIMARY KEY";
     close $f;
 }
 
-doSymlinkSource("ballot");
 doSymlinkSource("vote");
 doSymlinkSource("BOB");
 doSymlinkSource("config");
