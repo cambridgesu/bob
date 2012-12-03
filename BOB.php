@@ -15,7 +15,7 @@
  *
  * Token word list Copyright The Internet Society (1998).
  *
- * Version 0.11.2
+ * Version 0.11.3
  *
  * Copyright (C) authors as above
  * 
@@ -2714,7 +2714,7 @@ print txt\"";
 		}
 		
 		# Get the data
-		$query = "SELECT username,unit,surname,forename,voted FROM `{$this->voterTable}` ORDER BY unit,surname,forename;";
+		$query = "SELECT username,unit,forename,surname,voted FROM `{$this->voterTable}` ORDER BY unit,surname,forename;";
 		if (!$voterData = $this->getData ($query)) {
 			echo "\n<p>There was a problem getting the voter data.</p>";
 			return false;
@@ -2735,18 +2735,23 @@ print txt\"";
 		
 		# Regroup the main data by unit
 		$data = $this->regroup ($voterData, 'unit', $removeGroupColumn = true);
+		$totalVoterUnits = count ($data);
 		
 		# Compile the HTML
 		$html  = "\n<p><em><strong>When printing these pages, the Returning Officer is advised to remove the automatic printing fields (e.g. date, URL) that the browser may add to avoid it looking like a webpage.</strong></em></p>";
-		$html .= "\n<p>List created at " . date ('r') . "</p>";
+		if ($totalVoterUnits > 1) {
+			$html .= "\n<p><em><strong>On a modern browser, such as Firefox, each voter Unit (e.g. College/Department/division/etc.) should automatically start on a separate page when printing.</strong></em></p>";
+		}
+		$html .= "\n<p>List created at " . date ('r') . '</p>';
 		
 		# Show the statistics
 		$html .= "\n<h2>Statistics</h2>";
 		$html .= "\n<p>Total eligible voters: " . $this->registeredVoters . '</p>';
 		$html .= "\n<p>Total voted: " . $this->totalVoted . '</p>';
-		$html .= "\n<p>Percentage: " . round (($this->totalVoted / $this->registeredVoters), 2) . '%</p>';
-		$html .= "\n<p>Total voter Units (departments/divisions/colleges/etc.): " . count ($data) . '</p>';
-		$html .= "\n<p>On a modern browser, such as Firefox, each voter Unit should automatically start on a separate page when printing.</p>";
+		$html .= "\n<p>Percentage: " . round (($this->totalVoted / $this->registeredVoters) * 100, 2) . '%</p>';
+		if ($totalVoterUnits > 1) {
+			$html .= "\n<p>Total voter Units (Colleges/Departments/divisions/etc.): {$totalVoterUnits}</p>";
+		}
 		$html .= "\n<hr />";
 		
 		# Loop through and create the list for each unit
