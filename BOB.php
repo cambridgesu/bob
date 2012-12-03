@@ -15,7 +15,7 @@
  *
  * Token word list Copyright The Internet Society (1998).
  *
- * Version 0.9.2
+ * Version 0.9.3
  *
  * Copyright (C) authors as above
  * 
@@ -496,7 +496,6 @@ class BOB
 	private $positionInfo;					// Positions available per election; derived from electionInfo
 	private $bobMd5;						// MD5 of the BOB program (this file)
 	private $configMd5;						// MD5 of the config being used
-	private $referendumOptions = array (0 => '(blank)', 1 => 'Yes', 2 => 'No');	// Options for a referendum
 	private $convertTo_CandidateToNumber = true;	// In the admin ballot printing mode, whether to convert to candidate=>number format
 	
 	
@@ -1915,7 +1914,7 @@ class BOB
 		
 		// Show the ballot page if not posted or problems found, then end
 		if (empty ($_POST) || $problems) {
-			$this->ballotPage($viewOnly);
+			$this->ballotPage($this->config['electionInfo'], $viewOnly);
 			return;
 		}
 		
@@ -1933,8 +1932,14 @@ class BOB
 	}
   
   
+  // Statically-callable method of showing the ballot page, for use by the separate bobgui program for viewing a ballot setup
+  public function viewBallotPageExternal ($electionInfo, $submitTo) {
+  	self::ballotPage ($electionInfo, $viewOnly = true, $submitTo);
+  }
+  
+  
   // Ballot page
-  private function ballotPage($viewOnly = false){
+  private function ballotPage($electionInfo, $viewOnly = false, $submitTo = false){
     
 	# Voting instructions
 	echo "
@@ -1954,10 +1959,10 @@ class BOB
 	";
 	
 	echo "\n" . '<div class="graybox">';
-	echo '<form action="./?' . ($viewOnly ? 'admin_viewform' : 'vote') . '" method="post">',"\n\n";
+	echo '<form action="' . ($submitTo ? $submitTo : ($viewOnly ? './?admin_viewform' : './?vote')) . '" method="post">',"\n\n";
 	
 	$i = 0;	// Start a count of vote groups
-	foreach ($this->config['electionInfo'] as $options) {	// Loop through each vote group
+	foreach ($electionInfo as $options) {	// Loop through each vote group
 		
 		$i++;	// Advance the vote group counter
 		if (!$options) {continue;}	// If the array is empty, move on
@@ -1974,7 +1979,7 @@ class BOB
 		// Deal with the special case of a referendum, and define what a referendum looks like in terms of the available candidates
 		$isReferendum = ($options[1] == 'referendum');
 		if ($isReferendum) {
-			$options = $this->referendumOptions;
+			$options = array (0 => '(blank)', 1 => 'Yes', 2 => 'No');	// Options for a referendum
 			$boxes = 1;
 		}
 		
