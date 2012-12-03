@@ -18,8 +18,8 @@ $config['dbSetupUsername'] = 'testvotesetup';
 $config['title'] = "Some electronic ballot";	// Text, no HTML
 $config['urlMoreInfo'] = 'http://www.example.com/';	// Or false if none
 
-# Details of Returning Officer, Sysadmins, and usernames of both
-$config['emailReturningOfficer'] = 'returningOfficer@localhost';
+# Details of Returning Officer, Sysadmins, and usernames of the election officials
+$config['emailReturningOfficer'] = 'returningOfficer@localhost';	// In a managed hosting scenario, this might be a master mailbox rather than the officials' e-mail account(s)
 $config['emailTech'] = 'adminperson@localhost';
 $config['officialsUsernames'] = 'abc12 xyz98';	// Space-separated
 

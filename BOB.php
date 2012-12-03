@@ -15,7 +15,7 @@
  *
  * Token word list Copyright The Internet Society (1998).
  *
- * Version 0.11.1
+ * Version 0.11.2
  *
  * Copyright (C) authors as above
  * 
@@ -64,8 +64,8 @@ $config['dbSetupUsername'] = 'testvotesetup';
 $config['title'] = "Some electronic ballot";	// Text, no HTML
 $config['urlMoreInfo'] = 'http://www.example.com/';	// Or false if none
 
-# Details of Returning Officer, Sysadmins, and usernames of both
-$config['emailReturningOfficer'] = 'returningOfficer@localhost';
+# Details of Returning Officer, Sysadmins, and usernames of the election officials
+$config['emailReturningOfficer'] = 'returningOfficer@localhost';	// In a managed hosting scenario, this might be a master mailbox rather than the officials' e-mail account(s)
 $config['emailTech'] = 'adminperson@localhost';
 $config['officialsUsernames'] = 'abc12 xyz98';	// Space-separated
 
@@ -178,7 +178,7 @@ CREATE TABLE IF NOT EXISTS `instances` (
   `title` varchar(255) collate utf8_unicode_ci NOT NULL COMMENT 'Title of this ballot',
   `urlMoreInfo` varchar(255) collate utf8_unicode_ci default NULL COMMENT 'URL for more info about the ballot',
   `afterVoteMessageHtml` varchar(255) collate utf8_unicode_ci default NULL COMMENT 'An extra message, if any, which people will see when they have voted',
-  `emailReturningOfficer` varchar(255) collate utf8_unicode_ci NOT NULL COMMENT 'E-mail address of Returning Officer',
+  `emailReturningOfficer` varchar(255) collate utf8_unicode_ci NOT NULL COMMENT 'E-mail address of Returning Officer / mailbox',
   `emailTech` varchar(255) collate utf8_unicode_ci NOT NULL COMMENT 'E-mail address of Technical Administrator',
   `officialsUsernames` varchar(255) collate utf8_unicode_ci NOT NULL COMMENT 'Usernames of Returning Officer + Sysadmins',
   `randomisationInfo` enum('','Candidate order has been automatically randomised','Candidate order has been automatically alphabetised','Candidates have been entered by the Returning Officer in the order shown') collate utf8_unicode_ci default NULL COMMENT 'Candidate ordering/randomisation',
@@ -1642,7 +1642,7 @@ class BOB
 			if ($this->userIsRegisteredVoter) {
 				$html .= "\n\t\t" . "<p class=\"electoralroll\">Yes, you (<strong>{$this->username}</strong>) <strong>are</strong> on the electoral roll.</p>";
 			} else {
-				$html .= "\n\t\t" . "<p class=\"electoralroll\">No, you (<strong>{$this->username}</strong>) are <strong>not</strong> on the electoral roll.<br />If you think you should be, please contact the Returning Officer &lt;{$this->config['emailReturningOfficer']}&gt;.</p>";
+				$html .= "\n\t\t" . "<p class=\"electoralroll\">No, you (<strong>{$this->username}</strong>) are <strong>not</strong> on the electoral roll.<br />If you think you should be, please contact the election official(s) listed below.</p>";
 			}
 		}
 		
@@ -1659,26 +1659,25 @@ class BOB
 			if ($this->config['organisationLogoUrl']) {$html .= "<img src=\"{$this->config['organisationLogoUrl']}\" alt=\"Logo\" height=\"60\" />";}
 			$html .= "</td>\n\t</tr>";
 		}
+		$html .= "\n\t<tr>\n\t\t<td>Username(s) of election official(s):</td>\n\t\t<td><strong>" . htmlspecialchars (str_replace (' ', ', ', $this->config['officialsUsernames'])) . "</strong></td>\n\t</tr>";
 		$html .= "\n\t<tr>\n\t\t<td>Total eligible registered voters:</td>\n\t\t<td>" . $this->registeredVoters . ($this->beforeElection ? ' (This may change before the voting opens)' : '') . "</td>\n\t</tr>";
 		$html .= "\n\t<tr>\n\t\t<td>Vote opening time:</td>\n\t\t<td>" . $this->ballotStartFormatted . "</td>\n\t</tr>";
 		$html .= "\n\t<tr>\n\t\t<td>Vote closing time:</td>\n\t\t<td>" . $this->ballotEndFormatted . "</td>\n\t</tr>";
 		$html .= "\n\t<tr>\n\t\t<td>List of votes cast viewable at:</td>\n\t\t<td>" . $this->ballotViewableFormatted . "</td>\n\t</tr>";
 		if ($this->config['randomisationInfo']) {$html .= "\n\t<tr>\n\t\t<td>Randomisation:</td>\n\t\t<td>" . htmlspecialchars ($this->config['randomisationInfo']) . "</td>\n\t</tr>";}
-		$html .= "\n\t<tr>\n\t\t<td>E-mail of Returning Officer:</td>\n\t\t<td>" . htmlspecialchars ($this->config['emailReturningOfficer']) . "</td>\n\t</tr>";
 		$html .= "\n\t<tr>\n\t\t<td>E-mail of Technical Administrator:</td>\n\t\t<td>" . htmlspecialchars ($this->config['emailTech']) . "</td>\n\t</tr>";
-		$html .= "\n\t<tr>\n\t\t<td>Usernames of both:</td>\n\t\t<td>" . htmlspecialchars (str_replace (' ', ', ', $this->config['officialsUsernames'])) . "</td>\n\t</tr>";
 		if (!$this->beforeElection) {	// The security hashes only need to be constant from the opening of the ballot onwards, e.g. the configuration would change before opening if a candidate pulled out
 			$html .= "\n\t<tr>\n\t\t<td>BOB program security hash:</td>\n\t\t<td>{$this->bobMd5}</td>\n\t</tr>";
 			$html .= "\n\t<tr>\n\t\t<td>Configuration security hash:</td>\n\t\t<td>{$this->configMd5}</td>\n\t</tr>";
 		}
 		
 		$html .= "\n</table>";
-		$html .= "\n<p>If you have any questions about this ballot, please contact the Returning Officer listed above in the first instance.</p>";
+		$html .= "\n<p>If you have any questions about this ballot, please contact the election official(s) listed above in the first instance.</p>";
 		
 		# Information about the voting system and link to view source
 		$html .= "\n<h2>About the voting system</h2>";
 		$html .= "\n<p>This system provides a means to forward your anonymised votes to the Returning Officer. The Returning Officer will be able to see who has voted but will not be able to tell who has cast which votes.</p>";
-		$html .= "\n<p>When you have successfully placed your vote, you will be e-mailed a sequence of random-looking short words - your \"voting token\". This system does not store the connection between your voting token and your identity, however it does e-mail your voting token alongside your vote to the returning officer (and store it in a database to protect against e-mail fraud).  When polls have closed, the list of all the votes cast will be made available - because only you will know your voting token, you will be able to check that your vote was correctly included.</p>";
+		$html .= "\n<p>When you have successfully placed your vote, you will be e-mailed a sequence of random-looking short words - your \"voting token\". This system does not store the connection between your voting token and your identity, however it does store your voting token in a database, and e-mails it to a mailbox for audit purposes. When polls have closed, the list of all the votes cast will be made available - because only you will know your voting token, you will be able to check that your vote was correctly included.</p>";
 		$html .= "\n<p>Disclaimer: The (extremely minimal) software behind this voting system has been checked independently, and has been agreed to be a system which should avoid, but will at least detect voting irregularities.
 						The service is hosted on a computer that is not under the direct administrative control of the organisation running the election.
 						Evidence can be acquired from the external System Administrators &lt;{$this->config['emailTech']}&gt; that the software is not modified during the election. 
@@ -1816,13 +1815,13 @@ class BOB
 			
 			# Check whether the user is in the list
 			if (!$this->userIsRegisteredVoter) {
-				echo "\n<p>Sorry, you do not appear to be recorded in our list of registered voters.</p>\n<p>Please contact the Returning Officer &lt;{$this->config['emailReturningOfficer']}&gt;, or vote using alternative means (if applicable).</p>";
+				echo "\n<p>Sorry, you do not appear to be recorded in our list of registered voters.</p>\n<p>Please contact the election official(s) listed on the front page, or vote using alternative means (if applicable).</p>";
 				return false;
 			}
 			
 			# Check if the user has already voted
 			if ($this->userHasVoted) {
-				echo "\n<p>Our records indicate that you have already voted.</p>\n<p>Please contact the Returning Officer &lt;{$this->config['emailReturningOfficer']}&gt; if you disagree.</p>";
+				echo "\n<p>Our records indicate that you have already voted.</p>\n<p>Please contact the election official(s) listed on the front page if you disagree.</p>";
 				return false;
 			}
 		}
@@ -2202,7 +2201,7 @@ $message
 </pre>
 </div>
 
-<p>E-mailing your vote to the Returning Officer &lt;{$this->config['emailReturningOfficer']}&gt; and blind-carbon-copying {$this->username}@cam.ac.uk ...
+<p>E-mailing your vote to the mailbox &lt;{$this->config['emailReturningOfficer']}&gt; and blind-carbon-copying {$this->username}@cam.ac.uk ...
 EOF;
 
     if(!(mail($this->config['emailReturningOfficer'],'Online voting: ' . $this->config['title'] . ' [' . $this->config['id'] . ']',$message,"From: {$this->config['emailTech']}\r\nBCC: {$this->username}@cam.ac.uk\r\n"))) return($this->err("Enqueue e-mail to voter failed."));
