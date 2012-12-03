@@ -30,6 +30,9 @@ $config['ballotViewable'] = '2009-02-19 00:01:00';
 # Textual information about any randomisation which may have been made
 $config['randomisationInfo'] = false;	// Will have htmlspecialchars applied to it
 
+# Percentage of voters who must cast a vote in a referendum for the referendum to be countable
+$config['referendumThresholdPercent'] = 10;
+
 # Extra messages (as HTML), if any, which people will see on the front page before voting, and when they have voted
 $config['frontPageMessageHtml'] = false;
 $config['afterVoteMessageHtml'] = false;

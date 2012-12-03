@@ -15,7 +15,7 @@
  *
  * Token word list Copyright The Internet Society (1998).
  *
- * Version 0.9.3
+ * Version 0.10.0
  *
  * Copyright (C) authors as above
  * 
@@ -47,7 +47,7 @@
 <?php
 
 ## Config file for BOB ##
-## All settings must be specified, except for these (which will revert to internal defaults if omitted): dbHostname,dbPasswordFile,urlMoreInfo,adminDuringElectionOK,randomisationInfo,frontPageMessageHtml,afterVoteMessageHtml,organisationName,organisationUrl,organisationLogoUrl,headerLocation,footerLocation
+## All settings must be specified, except for these (which will revert to internal defaults if omitted): dbHostname,dbPasswordFile,urlMoreInfo,adminDuringElectionOK,randomisationInfo,referendumThresholdPercent,frontPageMessageHtml,afterVoteMessageHtml,organisationName,organisationUrl,organisationLogoUrl,headerLocation,footerLocation
 
 # Unique identifier for this ballot
 $config['id'] = 'testelection';
@@ -75,6 +75,9 @@ $config['ballotViewable'] = '2009-02-19 00:01:00';
 
 # Textual information about any randomisation which may have been made
 $config['randomisationInfo'] = false;	// Will have htmlspecialchars applied to it
+
+# Percentage of voters who must cast a vote in a referendum for the referendum to be countable
+$config['referendumThresholdPercent'] = 10;
 
 # Extra messages (as HTML), if any, which people will see on the front page before voting, and when they have voted
 $config['frontPageMessageHtml'] = false;
@@ -153,8 +156,8 @@ $config['dbConfigTable'] = 'instances';
 
 
 # The database table must contain these fields, in addition to id as above:
-# title,urlMoreInfo,emailReturningOfficer,emailTech,officialsUsernames,ballotStart,ballotEnd,ballotViewable,randomisationInfo,frontPageMessageHtml,afterVoteMessageHtml,adminDuringElectionOK,organisationName,organisationUrl,organisationLogoUrl,headerLocation,footerLocation,electionInfo
-# However, urlMoreInfo,frontPageMessageHtml,afterVoteMessageHtml,adminDuringElectionOK,headerLocation,footerLocation are optional fields which need not be created
+# title,urlMoreInfo,emailReturningOfficer,emailTech,officialsUsernames,ballotStart,ballotEnd,ballotViewable,randomisationInfo,referendumThresholdPercent,frontPageMessageHtml,afterVoteMessageHtml,adminDuringElectionOK,organisationName,organisationUrl,organisationLogoUrl,headerLocation,footerLocation,electionInfo
+# However, urlMoreInfo,referendumThresholdPercent,frontPageMessageHtml,afterVoteMessageHtml,adminDuringElectionOK,headerLocation,footerLocation are optional fields which need not be created
 
 
 ## End of config; now run the system ##
@@ -169,25 +172,25 @@ new BOB ($config);
 
 
 CREATE TABLE IF NOT EXISTS `instances` (
-  `id` varchar(255) collate utf8_unicode_ci NOT NULL COMMENT 'Unique identifier for this ballot',
+  `id` varchar(255) collate utf8_unicode_ci NOT NULL COMMENT 'Generated globally-unique ID',
   `title` varchar(255) collate utf8_unicode_ci NOT NULL COMMENT 'Title of this ballot',
   `urlMoreInfo` varchar(255) collate utf8_unicode_ci default NULL COMMENT 'URL for more info about the ballot',
+  `afterVoteMessageHtml` varchar(255) collate utf8_unicode_ci default NULL COMMENT 'An extra message, if any, which people will see when they have voted',
   `emailReturningOfficer` varchar(255) collate utf8_unicode_ci NOT NULL COMMENT 'E-mail address of Returning Officer',
   `emailTech` varchar(255) collate utf8_unicode_ci NOT NULL COMMENT 'E-mail address of Technical Administrator',
   `officialsUsernames` varchar(255) collate utf8_unicode_ci NOT NULL COMMENT 'Usernames of Returning Officer + Sysadmins',
-  `ballotStart` datetime NOT NULL COMMENT 'Start date/time of the ballot',
-  `ballotEnd` datetime NOT NULL COMMENT 'End date/time of the ballot',
-  `ballotViewable` datetime NOT NULL COMMENT 'Date/time when the cast votes can be viewed',
-  `randomisationInfo` varchar(255) collate utf8_unicode_ci default NULL COMMENT 'Textual information about any randomisation which may have been made',
-  `frontPageMessageHtml` varchar(255) collate utf8_unicode_ci default NULL COMMENT 'An extra message (as HTML), if any, which people will see on the front page before voting',
-  `afterVoteMessageHtml` varchar(255) collate utf8_unicode_ci default NULL COMMENT 'An extra message (as HTML), if any, which people will see when they have voted',
+  `randomisationInfo` enum('','Candidate order has been automatically randomised','Candidate order has been automatically alphabetised','Candidates have been entered by the Returning Officer in the order shown') collate utf8_unicode_ci default NULL COMMENT 'Candidate ordering/randomisation',
   `adminDuringElectionOK` int(1) default '0' COMMENT 'Whether the administrator can access admin pages during the election',
   `organisationName` varchar(255) collate utf8_unicode_ci default NULL COMMENT 'Organisation name',
   `organisationUrl` varchar(255) collate utf8_unicode_ci default NULL COMMENT 'Organisation URL',
   `organisationLogoUrl` varchar(255) collate utf8_unicode_ci default NULL COMMENT 'URL of organisation''s logo',
   `headerLocation` varchar(255) collate utf8_unicode_ci default '/style/prepended.html' COMMENT 'Header house style file',
   `footerLocation` varchar(255) collate utf8_unicode_ci default '/style/appended.html' COMMENT 'Footer house style file',
-  `electionInfo` text collate utf8_unicode_ci NOT NULL COMMENT 'Number of posts being elected; each position and the candidate names; each block separated by one line break',
+  `electionInfo` text collate utf8_unicode_ci NOT NULL COMMENT 'Election info: Number of positions being elected; Position title; Names of candidates; each block separated by one line break',
+  `referendumThresholdPercent` int(3) default '10' COMMENT 'Percentage of voters who must cast a vote in a referendum for the referendum to be countable',
+  `ballotStart` datetime NOT NULL COMMENT 'Start date/time of the ballot',
+  `ballotEnd` datetime NOT NULL COMMENT 'End date/time of the ballot',
+  `ballotViewable` datetime NOT NULL COMMENT 'Date/time when the cast votes can be viewed',
   PRIMARY KEY  (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
@@ -364,7 +367,6 @@ able to guarantee the election outcome.
 /*
  *	TODO
  *	
- *	- Results tallying page
  *	- Reverse the looping design in vote()
  *	- Replace the mysql_ API calls with PDO calls, using prepared statements
  *	- Convert all pages to return $html rather than echo it directly
@@ -394,24 +396,25 @@ class BOB
 	
 	# Config defaults (setting both structure and default values; NULL means that the instantiator must supply a value) that can come from a database table; if not these will get merged with the above main defaults
 	private $defaultsDatabaseable = array (
-		'title'					=> NULL,
-		'urlMoreInfo'			=> false,
-		'emailReturningOfficer'	=> NULL,
-		'emailTech'				=> NULL,
-		'officialsUsernames'	=> NULL,
-		'randomisationInfo'		=> false,
-		'adminDuringElectionOK'	=> false,
-		'ballotStart'			=> NULL,
-		'ballotEnd'				=> NULL,
-		'ballotViewable'		=> NULL,
-		'frontPageMessageHtml'	=> false,
-		'afterVoteMessageHtml'	=> false,
-		'organisationName'		=> false,
-		'organisationUrl'		=> false,
-		'organisationLogoUrl'	=> false,
-		'headerLocation'		=> false,
-		'footerLocation'		=> false,
-		'electionInfo'			=> NULL,
+		'title'							=> NULL,
+		'urlMoreInfo'					=> false,
+		'emailReturningOfficer'			=> NULL,
+		'emailTech'						=> NULL,
+		'officialsUsernames'			=> NULL,
+		'randomisationInfo'				=> false,
+		'referendumThresholdPercent'	=> 10,
+		'adminDuringElectionOK'			=> false,
+		'ballotStart'					=> NULL,
+		'ballotEnd'						=> NULL,
+		'ballotViewable'				=> NULL,
+		'frontPageMessageHtml'			=> false,
+		'afterVoteMessageHtml'			=> false,
+		'organisationName'				=> false,
+		'organisationUrl'				=> false,
+		'organisationLogoUrl'			=> false,
+		'headerLocation'				=> false,
+		'footerLocation'				=> false,
+		'electionInfo'					=> NULL,
 	);
 	
 	
@@ -430,6 +433,10 @@ class BOB
 		),
 		'showvotes' => array (
 			'description' => 'View votes',
+			'administrator' => false,
+		),
+		'results' => array (
+			'description' => 'View results',
 			'administrator' => false,
 		),
 		'viewsource' => array (
@@ -459,11 +466,6 @@ class BOB
 			'description' => 'Printable ballot papers for paper voting (following online voting)',
 			'administrator' => true,
 		),
-		// Experimental section disabled for now:
-		// 'admin_results' => array (
-		// 	'description' => 'Results',
-		// 	'administrator' => true,
-		// ),
 	);
 	
 	
@@ -484,7 +486,9 @@ class BOB
 	
 	# Other class variables
 	#!# Some of these could be made into per-instance settings, e.g. logoutLocation and convertTo_CandidateToNumber
-	private $logoutLocation = 'logout.html';	// Logout location which will get inserted (unprocessed) into strings mentioning this
+	private $logoutLocation = 'logout.html';		// Logout location which will get inserted (unprocessed) into strings mentioning this
+	private $countingInstallation = '/openstv/';	// from DOCUMENT_ROOT
+	private $documentRoot = false;			// Document root, which will be derived from DOCUMENT_ROOT
 	private $headerHtml = '';				// HTML for the header
 	private $footerHtml = '';				// HTML for the footer
 	private $pageTitle = false;				// Title of the page
@@ -498,6 +502,8 @@ class BOB
 	private $configMd5;						// MD5 of the config being used
 	private $convertTo_CandidateToNumber = true;	// In the admin ballot printing mode, whether to convert to candidate=>number format
 	
+	# Define what a referendum looks like in terms of the available candidates
+	private $referendumCandidates = array ('0' => '(blank)', '1' => 'Yes', '2' => 'No');
 	
 	# Contants
 	const MINIMUM_PHP_VERSION = '5';
@@ -774,7 +780,7 @@ class BOB
 		$string = trim ($this->config['electionInfo']);						// Trim whitespace at edges
 		$this->config['electionInfo'] = array ();
 		$this->positionInfo = array ();
-		$string = str_replace ("\r\n", "\n", $string);	// Standardise to unix newlines
+		$string = str_replace ("\r\n", "\n", $string);	// Standardise to Unix newlines
 		if (substr_count ($string, "\n\n\n")) {
 			$this->errors[] = "The '<strong>ename</strong>' setting in the configuration contains triple-line breaks. There must only be a single extra line between each election.";
 			return false;
@@ -880,13 +886,13 @@ class BOB
 			}
 			
 			# Ensure that the DOCUMENT_ROOT is not slash-terminated
-			$documentRoot = $_SERVER['DOCUMENT_ROOT'];
+			$this->documentRoot = $_SERVER['DOCUMENT_ROOT'];
 			if (substr ($_SERVER['DOCUMENT_ROOT'], -1) == '/') {
-				$documentRoot = substr ($_SERVER['DOCUMENT_ROOT'], 0, -1);
+				$this->documentRoot = substr ($_SERVER['DOCUMENT_ROOT'], 0, -1);
 			}
 			
 			# Construct the filename
-			$file = $documentRoot . $this->config[$configType];
+			$file = $this->documentRoot . $this->config[$configType];
 			
 			# Ensure the file exists
 			if (!file_exists ($file)) {
@@ -948,6 +954,9 @@ class BOB
 			#stampbox {float: right; width: 200px; height: 150px; display: block; border: 4px solid #aaa; margin: 20px 0 20px 20px; padding: 10px;}
 			ul.explanation {margin: 0; padding: 0;}
 			ul.explanation li {list-style: none; margin-left: 10px; padding-left: 10px;}
+			p.winner {color: #603; font-weight: bold; font-size: 1.2em;}
+			table.lines td.transferexplanation {padding-bottom: 1.25em;}
+			table.regulated td.key p {width: 150px;}
 		</style>
 		';
 		$this->headerHtml = str_replace ('</head>', $stylesHtml . '</head>', $this->headerHtml);
@@ -1594,7 +1603,8 @@ class BOB
 			$html .= "\n\t\t" . '<li><strong>Current status:</strong> The ballot has now closed.</li>';
 		}
 		if ($this->afterBallotView) {
-			$html .= "\n\t\t" . "<li class=\"showvotes\"><a href=\"./?showvotes\">View list of votes cast" . ($this->splitElection ? ' electronically' : '') . " (total {$this->totalVoted})</a></li>";
+			$html .= "\n\t\t" . "<li class=\"showvotes\"><a href=\"./?results\">View results<br />of election</a></li>";
+			$html .= "\n\t\t" . "<li class=\"spaced showvotes\"><a href=\"./?showvotes\">View list of votes cast" . ($this->splitElection ? ' electronically' : '') . " (total {$this->totalVoted})</a></li>";
 		}
 		if ($this->duringElection || ($this->splitElection && $this->afterElection && !$this->afterBallotView)) {
 			$html .= "\n\t\t" . '<li>You will be able to view the list of votes cast here at<br />' . $this->ballotViewableFormatted . '.</li>';
@@ -1802,9 +1812,6 @@ class BOB
 			
 			// Checks done to prevent invalid votes from crafted forms being cast
 			
-			// Define what a referendum looks like in terms of the available candidates
-			$referendumCandidates = array ('0' => '(blank)', '1' => 'Yes', '2' => 'No');
-			
 			// Confirm that what is posted matches the list of candidates in the config file
 			// Loop through each vote set specified in the config file
 			foreach ($this->config['electionInfo'] as $voteSet => $candidates) {
@@ -1832,7 +1839,7 @@ class BOB
 					}
 					
 					// Ensure that the selection given is in the list in the config file, e.g. 0 for no vote or 1/2/3 for candidates 1/2/3
-					$availableCandidates = array_keys (($candidate == 'referendum') ? $referendumCandidates : $candidates);
+					$availableCandidates = array_keys (($candidate == 'referendum') ? $this->referendumCandidates : $candidates);
 					foreach ($availableCandidates as $index => $availableCandidate) {
 						$availableCandidates[$index] = (string) $availableCandidate;	// Cast the numbers 0,1,2, etc explicitly as strings so that the (string) POST data can have strict comparison with in_array(); see http://www.php.net/in_array#61491
 					}
@@ -2181,25 +2188,80 @@ EOF;
   }
   
   
+	# Results page
+	private function results ()
+	{
+		# End if not viewable
+		if (!$this->votesViewable ()) {
+			echo "\n<p>Viewing the counted results is not yet possible.</p>";
+			return false;
+		}
+		
+		# Disallow counting for a split election
+		if ($this->splitElection) {
+			echo "\n<p>Results cannot be displayed automatically, as this election involves a paper vote after the online vote has closed.</p>";
+			echo "\n<p>Results can be calculated on a desktop computer using a program such as <a href=\"http://www.openstv.org/\" target=\"_blank\">OpenSTV</a> and using the BLT data on the <a href=\"./?showvotes#blt\">raw vote data</a> page.</p>";
+			return false;
+		}
+		
+		# Disable counting on Windows, as the BLT count won't work
+		$isWindowsHosting = (strtoupper (substr (PHP_OS, 0, 3)) === 'WIN');
+		if ($isWindowsHosting) {
+			echo "\n<p>Results cannot be displayed automatically, as this system does not have a compatible counting program installed.</p>";
+			echo "\n<p>Results can be calculated on a desktop computer using a program such as <a href=\"http://www.openstv.org/\" target=\"_blank\">OpenSTV</a> and using the BLT data on the <a href=\"./?showvotes#blt\">raw vote data</a> page.</p>";
+			return false;
+		}
+		
+		# Explain this page
+		echo "\n<p>This page shows the election results.<br />This has been calculated by taking the <a href=\"./?showvotes#blt\">raw vote data</a>, which you can view.</p>";
+		echo "\n<p>(You can repeat the result calculations yourself on a desktop computer, if you wish, using a program such as <a href=\"http://www.openstv.org/\" target=\"_blank\">OpenSTV</a> and using the BLT data on the <a href=\"./?showvotes#blt\">raw vote data</a> page.)</p>";
+		
+		# Get the data as raw ballots and formatted BLTs
+		list ($ballots, $blts) = $this->listVotesBlt ();
+		
+		# Count the data and show the results
+		$this->countBlt ($ballots, $blts);
+	}
+	
+	
+	# Function to determine if the votes are viewable
+	private function votesViewable ()
+	{
+		return ($this->afterBallotView || ($this->userIsElectionOfficial && $this->config['adminDuringElectionOK']));
+	}
+	
+	
+	# Page listing the votes cast, so that voters can check their ballot was cast correctly
 	private function showvotes ()
 	{
-		# Determine if the votes are viewable
-		$votesViewable = ($this->afterBallotView || ($this->userIsElectionOfficial && $this->config['adminDuringElectionOK']));
-		
 		# End if not viewable
-		if (!$votesViewable) {
+		if (!$this->votesViewable ()) {
 			echo "\n<p>Viewing the ballot box is not yet possible.</p>";
 			return false;
 		}
 		
+		# Add a jump list
+		echo "\n<p>Jump below to:</p>";
+		echo "\n<ul>";
+		echo "\n\t<li><a href=\"#key\">Key to vote data</a></li>";
+		echo "\n\t<li><a href=\"#votes\">List of votes</a></li>";
+		echo "\n\t<li><a href=\"#voters\">List of voters</a></li>";
+		echo "\n\t<li><a href=\"#blt\">List of votes in BLT format</a></li>";
+		echo "\n\t<li><a href=\"#counts\">Counted results</a></li>";
+		echo "\n</ul>";
+		
 		# Show the results
-		echo "\n<p>Vote tokens and the votes they are recorded with are shown below.</p>";
-		echo "\n<h2>Key to vote data</h2>";
+		echo "\n<h2 id=\"key\">Key to vote data</h2>";
+		echo "\n<p>Vote tokens and the votes they are recorded with are listed here.</p>";
 		$this->voteDataKey ();
-		echo "\n<h2>List of votes (column vXpY is the Yth preference for election X)</h2>";
+		echo "\n<h2 id=\"votes\">List of votes (column vXpY is the Yth preference for election X)</h2>";
 		$this->listVotes ();
-		echo "\n<h2>List of voters</h2>";
+		echo "\n<h2 id=\"voters\">List of voters</h2>";
 		$this->listVoters ();
+		echo "\n<h2 id=\"blt\">List of votes in BLT format</h2>";
+		$this->listVotesBlt (true);
+		echo "\n<h2 id=\"counts\">Counted results</h2>";
+		echo "\n<p>The <a href=\"./?results\">results page</a> shows the compiled counts.</p>";
 	}
 	
 	
@@ -2223,7 +2285,7 @@ EOF;
 	# Get the votes, and order them by token so that it is easier for voters to find their token in an alphabetical list
     if(!($result = mysql_query("SELECT * FROM `{$this->votesTable}`;"))) return($this->err("Vote list read failed."));
 
-    echo "<p>To view this data in a spreadsheet, paste it into a text file and save it as a .csv,<br />e.g. \"{$this->config['id']}.csv\".</p>";
+    echo "<p>To view this data in a spreadsheet, paste it into a text file and save it as a .csv file,<br />e.g. \"{$this->config['id']}.csv\".</p>";
     echo "<pre>\n";
     printf("%22s",mysql_field_name($result,0));    
     for($count=1; $count<mysql_num_fields($result); $count++){
@@ -2240,11 +2302,342 @@ EOF;
       echo "\n";
     }
     echo "</pre>";
-	
-    return true;
   }
   
   
+	# Show the votes that have been cast, in .blt format
+	private function listvotesBlt ($echo = false)
+	{
+		# Introduce this output
+		if ($echo) {
+			echo "\n<p>Total number of votes cast" . ($this->splitElection ? ' electronically' : '') . " was: <strong>{$this->totalVoted}</strong>.</p>";
+			echo "<p>The following output is in BLT format used by the Electoral Reform Society. This can be read by programs such as <a href=\"http://www.openstv.org/\" target=\"_blank\">OpenSTV</a> which provide a counting facility.</p>\n<p>Copy and paste " . (count ($this->config['electionInfo']) == 1 ? 'the block' : 'each of the blocks') . " below into a new text file and save " . (count ($this->config['electionInfo']) == 1 ? 'it' : 'each one') . " as a .blt file,<br />e.g. \"{$this->config['id']}_1.blt\"" . (count ($this->config['electionInfo']) == 1 ? '' : ",  \"{$this->config['id']}_2.blt\" etc.") . ".</p>";
+		}
+		
+		/*
+			http://www.openstv.org/manual explains the format as being as follows, but without the comments starting at #
+			It seems to be implied that an empty ballot (i.e. not voting for anyone) is simply skipped, in the BLT format
+			
+			4 2 # four candidates are competing for two seats
+			-2 # Bob has withdrawn (optional)
+			1 4 1 3 2 0 # first ballot
+			1 2 4 1 3 0
+			1 1 4 2 3 0 # The first number is the ballot weight (>= 1).
+			1 1 2 4 3 0 # The last 0 is an end of ballot marker.
+			1 1 4 3 0 # Numbers inbetween correspond to the candidates
+			1 3 2 4 1 0 # on the ballot.
+			1 3 4 1 2 0
+			1 3 4 1 2 0 # Chuck, Diane, Amy, Bob
+			1 4 3 2 0
+			1 2 3 4 1 0 # last ballot
+			0 # end of ballots marker
+			"Amy" # candidate 1
+			"Bob" # candidate 2
+			"Chuck" # candidate 3
+			"Diane" # candidate 4
+			"Gardening Club Election" # title
+		 */
+		
+		# Get the votes
+		if(!($result = mysql_query("SELECT * FROM `{$this->votesTable}`;"))) return($this->err("Vote list read failed."));
+		
+		# Loop through each ballot
+		$ballots = array ();
+		while ($row = mysql_fetch_assoc ($result)) {
+			$token = array_shift ($row);	// Skip the token, but store it for use as an index
+			
+			# Match the vote and position
+			foreach ($row as $slot => $choice) {
+				preg_match ('/v([0-9]+)p([0-9]+)/', $slot, $matches);
+				$election = $matches[1];
+				$position = $matches[2];
+				
+				# Store this result in an easily-loopable structure
+				$ballots[$election][$token][$position] = $choice;
+			}
+		}
+		
+		# Create a BLT listing for each election
+		$listing  = "\n<table class=\"border lines regulated\">";
+		$blts = array ();
+		foreach ($this->config['electionInfo'] as $electionIndex => $electionInfo) {
+			$listing .= "\n\t<tr>";
+			
+			# Set the election number, i.e. count from 1
+			$electionNumber = $electionIndex + 1;
+			
+			# Calculate total candidates and seats
+			$totalCandidates = count ($electionInfo) - 1;
+			$totalSeats = $this->positionInfo[$electionIndex];
+			
+			# Start an introduction (not part of the file format itself)
+			$listing .= "\n\t\t<td class=\"key\">";
+			$listing .= "\n<p><strong>Election no. {$electionNumber}.</strong><br />Save this text as e.g. <em>\"{$this->config['id']}_{$electionNumber}.blt\"</em> :</p>";
+			$listing .= "\n\t\t</td>";
+			$listing .= "\n\t\t<td>";
+			$listing .= "\n<pre>\n";
+			
+			# Number of candidates competing for how many seats
+			$blts[$electionNumber]  = "{$totalCandidates} {$totalSeats}";
+			
+			#!# No support in the GUI yet for adding in withdrawn candidates; that will require a $listing entry at this point
+			
+			# Add the ballot data in
+			foreach ($ballots[$electionNumber] as $token => $row) {
+				$rowItems = array ();
+				foreach ($row as $selection) {
+					if ($selection == '0') {break;}	// If they have not voted in a position, end
+					$rowItems[] = $selection;
+				}
+				if ($rowItems) {
+					$blts[$electionNumber] .= "\n1 " . implode (' ', $rowItems) . ' 0';
+				}
+			}
+			
+			# End of ballot marker
+			$blts[$electionNumber] .= "\n0";
+			
+			# Show each candidate
+			$electionTitle = array_shift ($electionInfo);
+			foreach ($electionInfo as $candidate) {
+				$candidate = str_replace ('"', '\"', $candidate);	// Escape any " character (which is the terminator character)
+				$blts[$electionNumber] .= "\n" . '"' . $candidate . '"';	
+			}
+			
+			# Title
+			$electionTitle = str_replace ('"', '\"', $electionTitle);	// Escape any " character (which is the terminator character)
+			$blts[$electionNumber] .= "\n" . '"' . $electionTitle . '"';
+			
+			# Add the blt to the listing
+			$listing .= htmlspecialchars ($blts[$electionNumber]);
+			
+			# End of this ballot
+			$listing .= "\n</pre>";
+			$listing .= "\n\t\t</td>";
+			$listing .= "\n\t</tr>";
+		}
+		$listing .= "\n</table>";
+		
+		# Show the listing
+		if ($echo) {
+			echo $listing;
+		}
+		
+		# Return the BLT listings
+		return array ($ballots, $blts);
+	}
+	
+	
+	# Function to perform a count based on BLT listings
+	private function countBlt ($ballots, $blts)
+	{
+		# Define the python command used to process a ballot; see http://www.openstv.org/manual and http://groups.google.com/group/openstv/browse_frm/thread/38fcfcdee99ce3ff
+		// Available output formats are generateTextResults, generateERSCSVResults and generateHTMLResults
+		// The use of /dev/stdin means this the count will not work on a Windows host
+		$pythonCommand = "python -c \"
+import sys
+sys.path.append('" . $this->documentRoot . $this->countingInstallation . "')
+from ballots import *
+from STV import *
+b = Ballots.loadKnown('/dev/stdin', 'blt')
+e = ERS97STV(b)
+e.runElection()
+txt = e.generateHTMLResults()
+print txt\"";
+		
+		# Create a droplist
+		$dropList = array ();
+		foreach ($this->config['electionInfo'] as $electionIndex => $electionInfo) {
+			$electionNumber = $electionIndex + 1;
+			$dropList[$electionNumber] = "<li><a href=\"#election{$electionNumber}\">" . htmlspecialchars ($electionInfo[0]) . '</a></li>';
+		}
+		echo "\n<div class=\"warningbox\">";
+		echo "\n<p class=\"warning\"><strong>IMPORTANT</strong>:</p>";
+		echo "\n<p class=\"warning\">Any results noted here are preliminary/indicative calculations.<br />Only the declaration of the Returning Officer shall indicate finalised results.</p>";
+		echo "\n<p class=\"warning\">These results have been counted from the raw data automatically using OpenSTV. It is possible that any counting system may have bugs. The Returning Officer is responsible for the accuracy of that count and repeating it using a different counting program if wished.</p>";
+		echo "\n</div>";
+		echo "\n<p>Jump to results below for:</p>" . "\n<ul>" . implode ("\n\t", $dropList) . "\n</ul>";
+		
+		# Run the program for each ballot
+		$listing  = '';
+		foreach ($this->config['electionInfo'] as $electionIndex => $electionInfo) {
+			
+			# Set the election number, i.e. count from 1
+			$electionNumber = $electionIndex + 1;
+			
+			# Add the heading
+			$listing .= "\n<hr />";
+			$listing .= "\n<h2 id=\"election{$electionNumber}\">" . htmlspecialchars ($electionInfo[0]) . '</h2>';
+			
+			# Branch to FPTP counting for a referendum
+			if ((count ($electionInfo) == 2) && $electionInfo[1] == 'referendum') {
+				$listing .= $this->countFPTP ($ballots[$electionNumber], $this->referendumCandidates, true);	// The data for a referendum isn't actually stored in BLT format, but token => votes-array-of-one-item
+				continue;
+			}
+			
+			# For elections where an STV count doesn't apply (e.g. candidates == seats), state the results directly
+			/*
+			#!# Ideally OpenSTV would handle this stuff directly, but throws a runtime error instead. See the code in NonSTV.py :
+			if (self.b.nCand < 2 or
+				self.nSeats < 1 or
+				self.b.nCand <= self.nSeats or
+				self.b.nBallots <= self.nSeats
+				):
+			raise RuntimeError, "Not enough ballots or candidates to run an election."
+			}
+			*/
+			$totalCandidates = count ($electionInfo) - 1;
+			$totalSeats = $this->positionInfo[$electionIndex];
+			if ($totalCandidates <= $totalSeats) {
+				unset ($electionInfo[0]);	// Remove the title from the start, leaving $electionInfo as just a list of candidates, indexed from 1
+				$listing .= "\n<p>There " . ($totalCandidates == 1 ? 'is one candidate' : "are {$totalCandidates} candidates") . ' standing and ' . ($totalSeats == 1 ? 'one seat' : "{$totalSeats} seats") . ' available, so ' . ($totalCandidates == 1 ? 'the candidate is' : 'all the candidates are') . ' automatically elected.</p>';
+				$listing .= $this->countFPTP ($ballots[$electionNumber], $electionInfo);
+				continue;	// End for this election election
+			}
+			
+			# Attempt to execute the command
+			$output = $this->createProcess ($blts[$electionNumber], $pythonCommand);
+			if ($output) {
+				$output = str_replace ('<th>R</th>', '<th>Round</th>', $output);	// Make this description more obvious to non-experts
+				$listing .= $this->cleanHtml4 ($output);
+			} else {
+				$listing .= "\n<p><em>The result could not be calculated. (Perhaps OpenSTV is not installed on the webserver?)<br />Please obtain a copy of OpenSTV yourself and save BLT files as above, to create the results yourself instead.</em></p>";
+			}
+		}
+		
+		# Show the listing
+		echo $listing;
+	}
+	
+	
+	# Function to handle running a python process securely without writing out any files
+	private function createProcess ($string, $command)
+	{
+		# Set the descriptors
+		$descriptorspec = array (
+			0 => array ('pipe', 'r'),  // stdin is a pipe that the child will read from
+			1 => array ('pipe', 'w'),  // stdout is a pipe that the child will write to
+			// 2 => array("file", "/tmp/error-output.txt", "a") // stderr is a file to write to
+		);
+		
+		# Assume failure unless the command works
+		$returnStatus = 1;
+		
+		# Create the process
+		$command = str_replace ("\r\n", "\n", $command);	// Standardise to Unix newlines
+		$process = proc_open ($command, $descriptorspec, $pipes);
+		if (is_resource ($process)) {
+			fwrite ($pipes[0], $string);
+			fclose ($pipes[0]);
+			$output = stream_get_contents ($pipes[1]);
+			fclose ($pipes[1]);
+			$returnStatus = proc_close ($process);
+		}
+		
+		# Return false as the output if the return status is a failure
+		if ($returnStatus) {return false;}	// Unix return status >0 is failure
+		
+		# Return the output
+		return $output;
+	}
+	
+	
+	# Function to count, and display results for, a First Past The Post election, i.e. referendum or where candidates <= posts
+	private function countFPTP ($data, $candidates, $isReferendum = false)
+	{
+		# Flatten the data
+		$castVotes = array ();
+		foreach ($data as $token => $voteData) {
+			$castVotes[$token] = $voteData[1];	// i.e. referendum results, or first preference only
+		}
+		
+		# Count the values
+		$results = array_count_values ($castVotes);
+		
+		# Ensure that a count exists for all values (e.g. even if no 'blank' has been registered, blank => 0 still needs to show in the printed results
+		$counts = array ();
+		foreach ($candidates as $value => $label) {
+			$counts[$label] = (array_key_exists ($value, $results) ? $results[$value] : 0);
+		}
+		
+		# Start the HTML
+		$html  = '';
+		
+		# Warn about first preference counts only (NB this is only being required because OpenSTV does not seem to handle cases of candidates <= seats, possibly for good reason)
+		$firstPreferenceOnlyShown = (!$isReferendum && count ($candidates) != 1);
+		if ($firstPreferenceOnlyShown) {
+			$html .= "\n<p>The following shows the <strong>first preference counts only</strong>. For more details, you will need to do a manual STV count from the <a href=\"./?showvotes#blt\">raw vote data</a> for this election.</p>";
+		}
+		
+		# Generate the HTML
+		$totalVotes = count ($castVotes);
+		$html .= "\n\n<table class=\"lines\">";
+		foreach ($counts as $label => $total) {
+			$html .= "\n\t<tr>";
+			$html .= "\n\t\t<td>" . htmlspecialchars ($label) . '</td>';
+			$html .= "\n\t\t<td>" . $total . ($firstPreferenceOnlyShown ? ' first preference' : '') . ($total == 1 ? ' vote' : ' votes') . '</td>';
+			if ($isReferendum) {
+				$html .= "\n\t\t<td>" . round ((100 * ($total / $totalVotes)), 2) . '%</td>';
+			}
+			$html .= "\n\t</tr>";
+		}
+		$html .= "\n</table>\n";
+		
+		# Show the result
+		if ($isReferendum) {
+			$threshold = $this->registeredVoters * ($this->config['referendumThresholdPercent'] / 100);
+			if ($totalVotes > $threshold) {
+				$yesLabel = $this->referendumCandidates[1];
+				$noLabel = $this->referendumCandidates[2];
+				$passed = ($counts[$yesLabel] > $counts[$noLabel]);	// A referendum must have YES higher than NO
+				$html .= "\n<p class=\"winner\">The referendum was " . ($passed ? '<strong>PASSED</strong> (and ' : '<strong>NOT passed</strong> (though ') . 'the turnout threshold of ' . htmlspecialchars ($this->config['referendumThresholdPercent']) . '% was reached).</p>';
+			} else {
+				$html .= "\n<p class=\"winner\">Referendum NOT passed: the referendum voter turnout threshold of " . htmlspecialchars ($this->config['referendumThresholdPercent']) . "% was not reached.</p>";
+			}
+		} else {
+			# State the winners
+			$html .= "\n<p class=\"winner\">" . ($totalCandidates == 1 ? 'The winner ' : 'Winners ') . 'should be verified manually from the first-preference counts above, or undertake a full STV count manually.</p>';
+			#!# This explicit declaration is disabled until the question of RON overruling other votes is further researched, or supported natively by OpenSTV; there needs to be a routine for recognising 'RON' first as a special candidate
+			// $html .= "\n<p class=\"winner\">" . ($totalCandidates == 1 ? 'Winner is ' : 'Winners are ') . htmlspecialchars (implode ('; ', $candidates)) . '.</p>';
+		}
+		
+		# Return the HTML
+		return $html;
+	}
+	
+	
+	# Function to clean the HTML4 output from OpenSTV
+	#!# this can be removed if OpenSTV moves to more semantic HTML
+	private function cleanHtml4 ($html)
+	{
+		# Clean non-body HTML, i.e. just leave the content
+		$html = preg_replace ('~<!DOCTYPE.+<body>~s', '', $html);
+		$html = str_replace (array ('</body>', '</html>'), '', $html);
+		
+		# Clean table specification
+		$html = str_replace ('<table border=1 cellspacing=0>', '<table class="countrounds border lines">', $html);
+		$html = str_replace ("<td align='center'", '<td', $html);
+		$html = str_replace ("<th align='center'", '<th', $html);
+		$html = preg_replace ('~<td (rowspan|colspan)=([0-9]+)>~', '<td \1="\2">', $html);
+		$html = str_replace ('<td colspan="', '<td class="transferexplanation" colspan="', $html);
+		
+		# Convert breaks to XHTML
+		$html = str_replace ('<br>', '<br />', $html);
+		
+		# Convert opening text block to a real paragraph rather than text with line-breaks
+		$html = "\n<p class=\"overview\">" . $html;
+		$html = preg_replace ("~<br />\s+<br />\s+<table~s", "</p>\n\n<table", $html);
+		
+		# Add a class for the winner
+		$html = str_replace ('<p>Winner is', '<p class="winner">Winner is', $html);
+		$html = str_replace ('<p>Winners are', '<p class="winner">Winners are', $html);
+		#!# Ideally remove the <br /> line-breaks in the winners paragraph
+		
+		# Return the cleaned HTML
+		return $html;
+	}
+	
+	
 	// print out the voters that have voted
 	private function listvoters ($perLine = 10)
 	{
@@ -2489,229 +2882,6 @@ EOF;
 	
 	
 	/* END OF PRINTED PAGES SECTION */
-	
-	
-	/* START OF COUNTING SECTION */
-/*	
-	
-	# Function to do a count
-	# IMPORTANT: This is merely work in progress and is not complete. It is not used actively in the voting system.
-	private function admin_results ()
-	{
-		# Determine if the results are viewable
-		$resultsViewable = ($this->afterBallotView || ($this->userIsElectionOfficial && $this->config['adminDuringElectionOK']));
-		
-		# End if not viewable
-		if (!$resultsViewable) {
-			echo "\n<p>The election is currently in progress, so this page is not available.</p>";
-			return false;
-		}
-		
-		# Show the results
-		echo "\n<h2>Uncorrected votes</h2>";
-		echo "\n\n<pre>";
-		
-		
-		$e = $this->getVoteData(); 
-		foreach(array_keys($e) as $tok){
-		  $this->print_vote($tok);
-		}
-		
-		    echo "  </pre>";
-		    echo "<h2>Sanitise invalid votes</h2>";
-		    echo "<pre>";
-		echo "Turn any later preference for a candidate already preferenced into a no-vote...\n";
-		
-		foreach($e as $tok => $votes){
-		  $modified = false;
-		  foreach($votes as $election => $prefs){
-		    for($j=0; $j<count($prefs)-1; $j++){
-		      for($k=$j+1; $k<count($prefs); $k++){
-			if($e[$tok][$election][$k] == $e[$tok][$election][$j] && $e[$tok][$election][$k]!=0){
-			  $e[$tok][$election][$k] = 0;
-			  $modified = true;
-			}
-		      }
-		    }
-		  }
-		  if($modified){
-		    $this->print_vote($tok);
-		  }
-		}
-		
-		echo "Turn all preferences later than the first no-vote into a no-vote...\n";
-		
-		foreach($e as $tok => $votes){
-		  $modified = false;
-		  foreach($votes as $election => $prefs){
-		    $zero = false;
-		    for($j=0; $j<count($prefs); $j++){
-		      if($e[$tok][$election][$j] == 0){ 
-			$zero = true;
-		      }
-		      if($e[$tok][$election][$j] != 0 && $zero){
-			$e[$tok][$election][$j] = 0;
-			$modified = true;
-		      }
-		    }    
-		  }
-		  if($modified){
-		    $this->print_vote($tok);
-		  }
-		}
-		
-		echo "Done invalid vote correcting.\n";
-		    echo "</pre>";
-		    echo "<h2>Corrected vote list</h2>";
-		    echo "<pre>";
-		foreach(array_keys($e) as $tok){ $this->print_vote($tok); }
-		    echo "</pre>";
-		
-		    echo "<h2>Some very approximate election calculations</h2>";
-		
-		
-			$this->voteDataKey();
-		
-		
-		$numElections = count(reset($e));
-		print "<p>Number of elections: $numElections</p>\n";
-		for($pickElection=0; $pickElection<$numElections; $pickElection++){
-		  print "<h3>".(1+$pickElection).": Election of {$this->positionInfo[$pickElection]} candidate".($this->positionInfo[$pickElection]>1?'s':'')." to the position: {$this->config['electionInfo'][$pickElection][0]} </h3>\n";
-		//gather election data
-		  $edata = array();
-		  foreach($e as $tok => $votes){
-		    $edata[$tok] = array($votes[$pickElection],1.0);
-		  }
-		  echo "<pre>", $this->doElection($edata,$this->positionInfo[$pickElection]),"</pre>";
-		}
-	}
-	
-  // return an array containing the election data
-  private function getVoteData(){
-  	#!# Consider reusing code in listvotes
-  	if(!($result = mysql_query("SELECT * FROM `{$this->votesTable}`"))) return($this->err("Vote list read failed."));
-	$electionData=array();
-    $prefsizes = array();
-    foreach( $this->config['electionInfo'] as $c => $pos){
-      array_push($prefsizes,count($pos)-1);
-    }
-    while($row = mysql_fetch_assoc($result)){
-      $a2 = array(); // array($row['token']);
-      foreach( $prefsizes as $v => $num ){
-		$a = array();
-		for( $i=1; $i<=$num; $i++){
-		  array_push($a,$row["v".(1+$v)."p{$i}"]);
-		}
-		array_push($a2,$a);
-      }
-      $electionData[$row['token']] = $a2;
-    }
-    return $electionData;
-  }
-  
-  
-    private function print_vote($tok){
-#!# Remove use of global; this will be broken at the moment (incomplete refactoring, as scope of $e is now different); not a problem as this code is currently not enabled
-      global $e;
-      printf("%20s ",$tok);
-      $f2 = true;
-      foreach($e[$tok] as $election => $prefs){
-		$first = true;
-		if($f2) { $f2=false; } else { echo " ;"; }
-		foreach($prefs as $p){
-		  if($first) { $first=false; } else { echo ','; }
-		  printf("%2d",$p);	  
-		}
-      }
-      echo "\n";
-    }
-	
-	private function doElection($e,$numpos){
-	  $tmp = reset($e);
-	  $numprefs = count($tmp[0]);
-	
-	  $donecs = array();
-	  $notdone = true;
-	  $progress = true;
-	
-	  while($notdone && $progress){
-	    $progress = false;
-	    $surplusrepeat = true;
-	    while($surplusrepeat){
-	      $surplusrepeat = false;
-	      $counts = array();
-	      $total = 0;
-	      $expired = false;
-	      foreach($e as $k=>$v){
-		while(count($v[0][0])>0 && $donecs[$v[0][0]]){
-		  array_shift($v[0]);
-		}
-		if(count($v[0][0])==0 || $v[0][0]==0){ // this vote has expired
-		  if(!$expired){
-		    $expired = true;
-		    print "Expired votes list:\n";
-		  }
-		  print "  $k\n";
-		  unset($e[$k]);
-		}else{
-		  $total++;
-		  $counts[$v[0][0]]+=$v[1];
-		  $progress = true;
-		}
-	      }
-	      if($expired){ print "Expired votes list end.\n"; }
-	    
-	      $quota = ceil($total/($numpos+1));
-	      print "Total valid votes = $total, number of places = $numpos, therefore quota = $quota\n";
-	    
-	      asort($counts);
-	      $surpluses = array();
-	      foreach($counts as $c=>$v){
-		print "Candidate $c has $v votes.\n";
-		if($v>=$quota){
-		  $newweight = ($v-$quota)/$v;
-		  print "  This is greater than or equal to the quota, so candidate $c is elected.\n";
-	       	  $donecs[$c] = true;
-		  if(count($donecs)>=$numpos){
-		    $notdone=false;
-		    break;
-		  }
-		  print "  Will redistribute preferences at weight $newweight.\n";
-		  $surpluses[$c] = $newweight;
-		  $surplusrepeat=true;
-		}
-	      }
-	      // distribute surpluses in one pass
-	      if($surplusrepeat && $notdone){
-		foreach($e as $k=>$v){
-		  $w = $surpluses[$v[0][0]];
-		  if($w){ 
-		    $e[$k][1] = $w;
-		    array_shift($e[$k][0]);
-		  }
-		}
-	      } 
-	    } //end while($surplusrepeat)
-	    
-	    if($notdone){
-	      // eliminate instead
-	      reset($counts);
-	      $elim = key($counts);
-	      if($elim){
-		print "The candidate: $elim had the fewest votes and was thus eliminated.\n";
-		$donecs[$elim] = true;
-		foreach($e as $k=>$v){
-		  if($v[0][0]==$elim){
-		    array_shift($e[$k][0]);
-		  }
-		}
-	      }
-	    }
-	  } //end while($notdone)
-	}
-*/	
-	/* END OF COUNTING SECTION */
-	
 	
 	
 	// RFC2289 defines a list of words for human-friendly one-time key exchange.
