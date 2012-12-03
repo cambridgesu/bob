@@ -15,7 +15,7 @@
  *
  * Token word list Copyright The Internet Society (1998).
  *
- * Version 0.11.3
+ * Version 0.11.4
  *
  * Copyright (C) authors as above
  * 
@@ -1628,7 +1628,7 @@ class BOB
 		}
 		if ($this->afterBallotView) {
 			$html .= "\n\t\t" . "<li class=\"showvotes\"><a href=\"./?results\">View results<br />of election</a></li>";
-			$html .= "\n\t\t" . "<li class=\"spaced showvotes\"><a href=\"./?showvotes\">View list of votes cast" . ($this->splitElection ? ' electronically' : '') . " (total {$this->totalVoted})</a></li>";
+			$html .= "\n\t\t" . "<li class=\"spaced showvotes\"><a href=\"./?showvotes\">View list of votes cast" . ($this->splitElection ? ' electronically' : '') . ' (total ' . number_format ($this->totalVoted) . ')</a></li>';
 		}
 		if ($this->duringElection || ($this->splitElection && $this->afterElection && !$this->afterBallotView)) {
 			$html .= "\n\t\t" . '<li>You will be able to view the list of votes cast here at<br />' . $this->ballotViewableFormatted . '.</li>';
@@ -1646,11 +1646,17 @@ class BOB
 			}
 		}
 		
+		# Link to admin page for election officials
+		if ($this->userIsElectionOfficial) {
+			$html .= "\n<h2>Admin section</h2>";
+			$html .= "\n" . '<p>As an election official, you can access the <a href="./?admin">Admin section</a> to monitor the ballot.</p>';
+		}
+		
 		# Details for this ballot
 		$html .= "\n<h2>Details for this ballot " . ($this->afterBallotView ? 'were' : 'are') . ":</h2>";
 		$html .= "\n<table class=\"lines\">";
 		$html .= "\n\t<tr>\n\t\t<td>Name of election:</td>\n\t\t<td><strong>" . htmlspecialchars ($this->config['title']) . "</strong></td>\n\t</tr>";
-		if ($this->afterBallotView) {$html .= "\n\t<tr>\n\t\t<td>Votes cast" . ($this->splitElection ? ' electronically' : '') . ":</td>\n\t\t<td><strong>{$this->totalVoted}</strong></td>\n\t</tr>";}
+		if ($this->afterBallotView) {$html .= "\n\t<tr>\n\t\t<td>Votes cast" . ($this->splitElection ? ' electronically' : '') . ":</td>\n\t\t<td><strong>" . number_format ($this->totalVoted) . "</strong></td>\n\t</tr>";}
 		if ($this->config['urlMoreInfo']) {$html .= "\n\t<tr>\n\t\t<td>More info about this ballot:</td>\n\t\t<td><a href=\"{$this->config['urlMoreInfo']}\">More info</a></td>\n\t</tr>";}
 		if ($this->config['organisationName'] || $this->config['organisationLogoUrl']) {
 			$html .= "\n\t<tr>\n\t\t<td>Organisation:</td>\n\t\t<td>";
@@ -1660,7 +1666,7 @@ class BOB
 			$html .= "</td>\n\t</tr>";
 		}
 		$html .= "\n\t<tr>\n\t\t<td>Username(s) of election official(s):</td>\n\t\t<td><strong>" . htmlspecialchars (str_replace (' ', ', ', $this->config['officialsUsernames'])) . "</strong></td>\n\t</tr>";
-		$html .= "\n\t<tr>\n\t\t<td>Total eligible registered voters:</td>\n\t\t<td>" . $this->registeredVoters . ($this->beforeElection ? ' (This may change before the voting opens)' : '') . "</td>\n\t</tr>";
+		$html .= "\n\t<tr>\n\t\t<td>Total eligible registered voters:</td>\n\t\t<td>" . number_format ($this->registeredVoters) . ($this->beforeElection ? ' (This may change before the voting opens)' : '') . "</td>\n\t</tr>";
 		$html .= "\n\t<tr>\n\t\t<td>Vote opening time:</td>\n\t\t<td>" . $this->ballotStartFormatted . "</td>\n\t</tr>";
 		$html .= "\n\t<tr>\n\t\t<td>Vote closing time:</td>\n\t\t<td>" . $this->ballotEndFormatted . "</td>\n\t</tr>";
 		$html .= "\n\t<tr>\n\t\t<td>List of votes cast viewable at:</td>\n\t\t<td>" . $this->ballotViewableFormatted . "</td>\n\t</tr>";
@@ -1726,8 +1732,8 @@ class BOB
 		# Status information
 		$html .= "\n<h2>Status</h2>";
 		$html .= "\n<table class=\"lines\">";
-		$html .= "\n\t<tr>\n\t\t<td>Total registered voters:</td>\n\t\t<td>" . $this->registeredVoters . ($this->beforeElection ? ' (This may change before the voting opens)' : '') . "</td>\n\t</tr>";
-		if (!$this->beforeElection) {$html .= "\n\t<tr>\n\t\t<td>Votes cast:</td>\n\t\t<td>" . $this->totalVoted . "</td>\n\t</tr>";}
+		$html .= "\n\t<tr>\n\t\t<td>Total registered voters:</td>\n\t\t<td>" . number_format ($this->registeredVoters) . ($this->beforeElection ? ' (This may change before the voting opens)' : '') . "</td>\n\t</tr>";
+		if (!$this->beforeElection) {$html .= "\n\t<tr>\n\t\t<td>Votes cast:</td>\n\t\t<td>" . number_format ($this->totalVoted) . "</td>\n\t</tr>";}
 		$html .= "\n</table>";
 		
 		# Timestamp
@@ -2304,7 +2310,7 @@ EOF;
   
   // print out the votes that have been cast
   private function listvotes(){
-	echo "\n<p>Total number of votes cast" . ($this->splitElection ? ' electronically' : '') . " was: <strong>{$this->totalVoted}</strong>.</p>";
+	echo "\n<p>Total number of votes cast" . ($this->splitElection ? ' electronically' : '') . ' was: <strong>' . number_format ($this->totalVoted) . '</strong>.</p>';
 	# Get the votes, and order them by token so that it is easier for voters to find their token in an alphabetical list
     if(!($result = mysql_query("SELECT * FROM `{$this->votesTable}`;"))) return($this->err("Vote list read failed."));
 
@@ -2333,7 +2339,7 @@ EOF;
 	{
 		# Introduce this output
 		if ($echo) {
-			echo "\n<p>Total number of votes cast" . ($this->splitElection ? ' electronically' : '') . " was: <strong>{$this->totalVoted}</strong>.</p>";
+			echo "\n<p>Total number of votes cast" . ($this->splitElection ? ' electronically' : '') . ' was: <strong>' . number_format ($this->totalVoted) . '</strong>.</p>';
 			echo "<p>The following output is in BLT format used by the Electoral Reform Society. This can be read by programs such as <a href=\"http://www.openstv.org/\" target=\"_blank\">OpenSTV</a> which provide a counting facility.</p>\n<p>Copy and paste " . (count ($this->config['electionInfo']) == 1 ? 'the block' : 'each of the blocks') . " below into a new text file and save " . (count ($this->config['electionInfo']) == 1 ? 'it' : 'each one') . " as a .blt file,<br />e.g. \"{$this->config['id']}_1.blt\"" . (count ($this->config['electionInfo']) == 1 ? '' : ",  \"{$this->config['id']}_2.blt\" etc.") . ".</p>";
 		}
 		
@@ -2665,8 +2671,8 @@ print txt\"";
 	private function listvoters ($perLine = 10)
 	{
 		# Give the main data required for verification
-		echo "\n<p>Total number of voters on the roll is: <strong>{$this->registeredVoters}</strong>.</p>";
-		echo "\n<p>Total number of votes cast" . ($this->splitElection ? ' electronically' : '') . " was: <strong>{$this->totalVoted}</strong>.</p>";
+		echo "\n<p>Total number of voters on the roll is: <strong>" . number_format ($this->registeredVoters) . '</strong>.</p>';
+		echo "\n<p>Total number of votes cast" . ($this->splitElection ? ' electronically' : '') . ' was: <strong>' . number_format ($this->totalVoted) . '</strong>.</p>';
 		
 		# Re-check
 		if (!$this->afterBallotView) {return false;}	// This check is extraneous as this function wouldn't have been called otherwise
@@ -2746,8 +2752,8 @@ print txt\"";
 		
 		# Show the statistics
 		$html .= "\n<h2>Statistics</h2>";
-		$html .= "\n<p>Total eligible voters: " . $this->registeredVoters . '</p>';
-		$html .= "\n<p>Total voted: " . $this->totalVoted . '</p>';
+		$html .= "\n<p>Total eligible voters: " . number_format ($this->registeredVoters) . '</p>';
+		$html .= "\n<p>Total voted: " . number_format ($this->totalVoted) . '</p>';
 		$html .= "\n<p>Percentage: " . round (($this->totalVoted / $this->registeredVoters) * 100, 2) . '%</p>';
 		if ($totalVoterUnits > 1) {
 			$html .= "\n<p>Total voter Units (Colleges/Departments/divisions/etc.): {$totalVoterUnits}</p>";
