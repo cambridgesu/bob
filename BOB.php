@@ -15,7 +15,7 @@
  *
  * Token word list Copyright The Internet Society (1998).
  *
- * Version 0.11.5
+ * Version 0.11.6
  *
  * Copyright (C) authors as above
  * 
@@ -967,7 +967,7 @@ class BOB
 			h2 {font-size: 1.3em; margin-top: 2.2em; margin-bottom: 0.6em;}
 			.comment {color: #444;}
 			p.loginstatus {float: right; text-align: right;}
-			h2.unit, h2.paperballots {page-break-before:always;}
+			h2.unit, h2.paperballots {page-break-before: always;}
 			table.paperroll th {min-width: 150px;}
 			table.ballotpapers {width: 85%;}
 			table.referendum {width: 200px;}
@@ -981,6 +981,9 @@ class BOB
 			p.winner {color: #603; font-weight: bold; font-size: 1.2em;}
 			table.lines td.transferexplanation {padding-bottom: 1.25em;}
 			table.regulated td.key p {width: 150px;}
+			@media print {
+				body {background-color: #fff; color: #000;}
+			}
 		</style>
 		';
 		$this->headerHtml = str_replace ('</head>', $stylesHtml . '</head>', $this->headerHtml);
@@ -2736,8 +2739,6 @@ print txt\"";
 		foreach ($voterData as $index => $value) {
 			$username = $value['username'];
 			unset ($voterData[$index]['username']);
-			//$voterData[$index]['forename'] = (strlen ($voterData[$index]['forename']) ? $voterData[$index]['forename'] : '&nbsp;');
-			//$voterData[$index]['surname'] = (strlen ($voterData[$index]['surname']) ? $voterData[$index]['surname'] : '&nbsp;');
 			if ($value['voted']) {
 				$voterData[$index]['forename'] = '<s>' . htmlspecialchars ($voterData[$index]['forename']) . '</s>';
 				$voterData[$index]['surname'] = '<s>' . htmlspecialchars ($voterData[$index]['surname']) . '</s>';
@@ -2750,43 +2751,69 @@ print txt\"";
 		$totalVoterUnits = count ($data);
 		
 		# Compile the HTML
-		$html  = "\n<p><em><strong>When printing these pages, the Returning Officer is advised to remove the automatic printing fields (e.g. date, URL) that the browser may add to avoid it looking like a webpage.</strong></em></p>";
+		$startHtml  = '';
 		if ($totalVoterUnits > 1) {
-			$html .= "\n<p><em><strong>On a modern browser, such as Firefox, each voter Unit (e.g. College/Department/division/etc.) should automatically start on a separate page when printing.</strong></em></p>";
+			$startHtml .= "\n<p><em><strong>On a modern browser, such as Firefox, each voter Unit (e.g. College/Department/division/etc.) should automatically start on a separate page when printing.</strong></em></p>";
 		}
-		$html .= "\n<p>List created at " . date ('r') . '</p>';
+		$startHtml .= "\n<p>List created at " . date ('r') . '</p>';
 		
 		# Show the statistics
-		$html .= "\n<h2>Statistics</h2>";
-		$html .= "\n<p>Total eligible voters: " . number_format ($this->registeredVoters) . '</p>';
-		$html .= "\n<p>Total voted: " . number_format ($this->totalVoted) . '</p>';
-		$html .= "\n<p>Percentage: " . round (($this->totalVoted / $this->registeredVoters) * 100, 2) . '%</p>';
+		$startHtml .= "\n<h2>Statistics</h2>";
+		$startHtml .= "\n<p>Total eligible voters: " . number_format ($this->registeredVoters) . '</p>';
+		$startHtml .= "\n<p>Total voted: " . number_format ($this->totalVoted) . '</p>';
+		$startHtml .= "\n<p>Percentage: " . round (($this->totalVoted / $this->registeredVoters) * 100, 2) . '%</p>';
 		if ($totalVoterUnits > 1) {
-			$html .= "\n<p>Total voter Units (Colleges/Departments/divisions/etc.): {$totalVoterUnits}</p>";
+			$startHtml .= "\n<p>Total voter Units (Colleges/Departments/divisions/etc.): {$totalVoterUnits}</p>";
 		}
-		$html .= "\n<hr />";
 		
-		# Loop through and create the list for each unit
+		# Loop through and create the list for each unit and counts
+		$unitsHtml  = '';
+		$unitsStatisticsTable  = "\n<table class=\"lines compressed\">";
+		$unitsStatisticsTable .= "\n\t<tr><th>Unit</th><th>Voted online</th><th>Total voters</th><th>Percentage voted online</th></tr>";
 		foreach ($data as $unit => $users) {
-			$unitName = (strlen ($unit) ? $unit : '[Unnamed voter unit]');
-			$html .= "\n<h2 class=\"unit\">Electoral roll for: <u>{$unitName}</u>,<br />for vote: <u>" . htmlspecialchars ($this->config['title']) . '</u></h2>';
-			$html .= "\n<p>Those crossed out already have voted online. Do NOT give such people a voting paper.</p>";
-			$html .= "\n<p>As the remainder come to vote, draw a line through them.</p>";
-			$html .= "\n<table class=\"lines compressed paperroll\">";
-			$html .= "\n\t<tr><th>Forename</th><th>Surname</th><th>Voted?</th></tr>";
+			
+			# Count the total voters in this Unit and the number of those who have voted in this Unit
+			$votersThisUnit = count ($users);
+			$haveVoted = 0;
 			foreach ($users as $index => $attributes) {
-				$html .= "\n\t<tr>";
-				foreach ($attributes as $key => $value) {
-					$html .= "<td>{$value}</td>";
+				if ($attributes['voted']) {
+					$haveVoted++;
 				}
-				$html .= "</tr>";
 			}
-			$html .= "\n</table>";
-			$html .= "\n<hr />";
+			$percentageHaveVotedThisUnit = round (($haveVoted / $votersThisUnit) * 100, 2);
+			
+			# Compile the HTML
+			$unitName = (strlen ($unit) ? htmlspecialchars ($unit) : '[Unnamed voter unit]');
+			$unitsHtml .= "\n<h2 class=\"unit\">Electoral roll for: <u>{$unitName}</u>,<br />for ballot: <u>" . htmlspecialchars ($this->config['title']) . '</u></h2>';
+			$unitsHtml .= "\n<p>Total voted online: {$haveVoted} / {$votersThisUnit} (= {$percentageHaveVotedThisUnit}%).</p>";
+			$unitsHtml .= "\n<p>Those crossed out already have voted online. Do NOT give such people a voting paper.</p>";
+			$unitsHtml .= "\n<p>As the remainder come to vote, draw a line through them.</p>";
+			$unitsHtml .= "\n<table class=\"lines compressed paperroll\">";
+			$unitsHtml .= "\n\t<tr><th>Forename</th><th>Surname</th><th>Voted?</th></tr>";
+			foreach ($users as $index => $attributes) {
+				$unitsHtml .= "\n\t<tr>";
+				foreach ($attributes as $key => $value) {
+					$unitsHtml .= "<td>{$value}</td>";
+				}
+				$unitsHtml .= "</tr>";
+			}
+			$unitsHtml .= "\n</table>";
+			$unitsHtml .= "\n<hr />";
+			
+			# Add the stats for this Unit
+			$unitsStatisticsTable .= "\n\t<tr><td>{$unitName}</td><td>{$haveVoted}</td><td>{$votersThisUnit}</td><td>{$percentageHaveVotedThisUnit} %</td></tr>";
 		}
+		$unitsStatisticsTable .= "\n</table>";
+		
+		# Add the statistics table, showing the vote levels for each Unit, at the end of the starting HTML
+		$startHtml .= $unitsStatisticsTable;
+		$startHtml .= "\n<hr />";
 		
 		# End marking (mainly for browser page-breaking)
-		$html .= "\n<h2 class=\"unit\">PRINTABLE ROLL ENDED</h2>";
+		$unitsHtml .= "\n<h2 class=\"unit\">PRINTABLE ROLL ENDED</h2>";
+		
+		# Compile the overall HTML
+		$html = $startHtml . $unitsHtml;
 		
 		# Show the formatted roll output
 		echo $html;
