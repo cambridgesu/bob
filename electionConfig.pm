@@ -1,4 +1,4 @@
-# $Id: electionConfig.pm 74 2006-10-22 16:54:47Z dme26 $
+# $Id: electionConfig.pm 120 2007-02-11 16:42:14Z dme26 $
 # This file is part of BOB: the Basic On-line Ballot-box
 # http://www.cl.cam.ac.uk/~dme26/proj/BOB/
 #####################################################################
@@ -31,6 +31,12 @@ $ro=<<EOF;
 someone trustworthy
 EOF
 
+# Election officials' CRSIDs in a space-separated list.
+$eofficials='';
+
+# Allow admin operations during an election. (admin_checkcount.php is allowed in any case)
+$adminDuringElectionOK=FALSE;
+
 # Returning officer as referred to via HTML (needs $emailRO defined first)
 $htmlRO=<<EOF;
 <a href="mailto:$emailRO">returning officer ($emailRO)</a>
@@ -61,28 +67,31 @@ EOF
 # Database configuration variables
 
 # Database host
-$dbhost="localhost";
+$dbhost='localhost';
 
 # Database name
-$dbdb="DBname";
+$dbdb='DBname';
 
 # Database user
-$dbuser="DBuser";
+$dbuser='DBuser';
 
 # Database password (will go into "dbpasswd" file)
-$dbpass="DBPassword";
+$dbpass='DBPassword';
 
-# Election info (must put a backslash before $'s and "'s i.e. \$ and \")
+# Election info (the numeric lines are the number of places for a position)
 $election=<<ENDOFDATA;
 
+1
 Position 1 - perhaps "President"
 Some Candidate
 Another Candidate
 
+1
 Another Position
 A candidate for this position
 Hopefully you get the idea
 
+2
 Each separate block
 Represents another vote
 First line of a block is the position title

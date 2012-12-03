@@ -1,7 +1,7 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
 <!--
-- $Id: rollcheck.php 123 2007-02-12 00:13:09Z dme26 $
+- $Id: rollcheck.php 77 2006-10-31 00:54:13Z dme26 $
 -
 - This file is part of the Basic Online Ballot-box (BOB).
 - http://www.cl.cam.ac.uk/~dme26/proj/BOB/
@@ -13,7 +13,7 @@
   // initialise all variables (i.e. thwart register_globals attacks)
   $bob = false;
   require("./BOB.php");
-  $title .= ' - roll check page';
+  $title .= ' - voter count status page';
 ?>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
@@ -26,7 +26,10 @@
   </head>
   <body>
     <h1><?php echo $title; ?></h1>
-<?php $bob->rollcheckWF(); ?>
+<?php
+    $votecount = $bob->votecount();
+    echo "<p>At time ".date("r")." the number of votes recorded is ".$votecount."</p>\n";
+?>
     <hr />
     <address><?php echo 'Contact: ',$htmlTech,' or the ',$htmlRO; ?></address>
   </body>

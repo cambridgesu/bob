@@ -1,7 +1,7 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
 <!--
-- $Id: rollcheck.php 123 2007-02-12 00:13:09Z dme26 $
+- $Id: rollcheck.php 77 2006-10-31 00:54:13Z dme26 $
 -
 - This file is part of the Basic Online Ballot-box (BOB).
 - http://www.cl.cam.ac.uk/~dme26/proj/BOB/
@@ -13,7 +13,7 @@
   // initialise all variables (i.e. thwart register_globals attacks)
   $bob = false;
   require("./BOB.php");
-  $title .= ' - roll check page';
+  $title .= ' - view votes';
 ?>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
@@ -21,12 +21,21 @@
     <title><?php echo $title; ?></title>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <style type="text/css">
-    .votemsg {border:1px solid #bbbbbb; background: #eeeeee; padding: 4px;}
+    pre {border:1px solid #bbbbbb; background: #eeeeee; padding: 4px;}
     </style>
   </head>
   <body>
     <h1><?php echo $title; ?></h1>
-<?php $bob->rollcheckWF(); ?>
+<?php if($bob->afterElection()){ ?>
+      <p>Vote tokens and the votes they are recorded with are shown below</p>
+    <h2>Key to vote data</h2>
+      <?php $bob->voteDataKey(); ?>
+    <h2>List of votes (column vXpY is the Yth preference for election X)</h2>
+      <?php $bob->listVotes();      
+    }else{
+?><p>The election has not finished, so viewing the complete ballot box is not yet possible.</p><?php
+    } 
+?>
     <hr />
     <address><?php echo 'Contact: ',$htmlTech,' or the ',$htmlRO; ?></address>
   </body>

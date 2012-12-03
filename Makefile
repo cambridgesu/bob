@@ -1,14 +1,14 @@
-# $Id: Makefile 109 2007-02-10 22:45:50Z dme26 $
+# $Id: Makefile 119 2007-02-11 16:16:11Z dme26 $
 #
 # BOB Makefile
 
 .phony: info election configPerms clear clean
 
-files = AUTHORS COPYING INSTALL Makefile electionConfig.pm genElection.pl rollcheck.php vote.php
+files = AUTHORS COPYING INSTALL Makefile electionConfig.pm genElection.pl rollcheck.php vote.php BOB.php admin_checkvoter.php admin_checkcount.php admin_dump.php admin_results.php showvotes.php
 genLiveFiles = config.php vote.txt ballot.html .htaccess
 genStubFiles = createtable.sql voters.sql printelection.sql
 
-release = 0.52
+release = 0.6
 archiveName = BOB$(release).tar.gz
 
 info:
@@ -25,7 +25,7 @@ info:
 archive:	configPerms $(archiveName)
 
 configPerms:
-	chmod 644 AUTHORS COPYING INSTALL Makefile rollcheck.php vote.php
+	chmod 644 AUTHORS COPYING INSTALL Makefile rollcheck.php vote.php BOB.php
 	chmod 600 electionConfig.pm 
 	chmod 700 genElection.pl 
 
