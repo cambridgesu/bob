@@ -15,7 +15,7 @@
  *
  * Token word list Copyright The Internet Society (1998).
  *
- * Version 0.11.0
+ * Version 0.11.1
  *
  * Copyright (C) authors as above
  * 
@@ -728,6 +728,9 @@ class BOB
 					
 					# Set the staging database as the database to be used by the runtime
 					$suppliedArguments['dbDatabase'] = $this->config['dbDatabaseStaging'];
+					
+					# Force reconnection later with the new database name
+					$this->closeDatabaseConnection ();
 				}
 			}
 			
