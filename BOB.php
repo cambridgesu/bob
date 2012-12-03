@@ -15,7 +15,7 @@
  *
  * Token word list Copyright The Internet Society (1998).
  *
- * Version 0.10.0
+ * Version 0.11.0
  *
  * Copyright (C) authors as above
  * 
@@ -56,6 +56,7 @@ $config['id'] = 'testelection';
 $config['dbHostname'] = 'localhost';
 $config['dbPasswordFile'] = './dbpass';
 $config['dbDatabase'] = 'testvote';
+$config['dbDatabaseStaging'] = false;	// or a different database name if the configuration is shifted from a staging database before the vote opens to the main append-only database
 $config['dbUsername'] = 'testvote';
 $config['dbSetupUsername'] = 'testvotesetup';
 
@@ -148,6 +149,7 @@ $config['id'] = 'testelection';
 $config['dbHostname'] = 'localhost';
 $config['dbPasswordFile'] = './dbpass';
 $config['dbDatabase'] = 'testvote';
+$config['dbDatabaseStaging'] = false;
 $config['dbUsername'] = 'testvote';
 $config['dbSetupUsername'] = 'testvotesetup';
 
@@ -371,7 +373,7 @@ able to guarantee the election outcome.
  *	- Replace the mysql_ API calls with PDO calls, using prepared statements
  *	- Convert all pages to return $html rather than echo it directly
  *	- Add the ability to disable the verifyRuntimeDatabasePrivileges() check, as two users may not be possible in some hosting environments; that will reduce security to some extent
- *	- Consider changing the duringElection, afterElection, afterBallotView flags to a state model
+ *	- Consider changing the duringElection, afterElection, afterBallotView flags to a state model and set this using NOW() in the database call
  *	- In the registeredVoters() routine, when there are no users, as well as the SQL, list the same thing but in a format directly invocable at shell, with a --extra-defaults-file=mysql.ini flag; then change the openDatabaseConnection()'s call of file_get_contents to an ini read
  *	- Enable the string 'Raven' and the .htaccess example to be non-Raven specific (or show the example as one of a number of examples)
  *	- Other items marked with #!# below
@@ -389,6 +391,7 @@ class BOB
 		'dbHostname'			=> 'localhost',
 		'dbPasswordFile'		=> './dbpass',
 		'dbDatabase'			=> NULL,
+		'dbDatabaseStaging'		=> false,
 		'dbUsername'			=> NULL,
 		'dbSetupUsername'		=> NULL,
 		'dbConfigTable'			=> false,
@@ -534,7 +537,7 @@ class BOB
 		}
 		
 		# Create an HTML representation of the config structure so it can be echoed to screen below
-		$configHtml .= $this->configHtml ($this->config, 'after it has been processed and sanitised');
+		$configHtml .= $this->configHtml ($this->config, 'after it has been processed and sanitised, as used by the runtime voting workflow');
 		
 		# Ensure a clean server environment (e.g. register_globals off, etc.)
 		if (!$this->environmentIsOk ()) {
@@ -688,7 +691,7 @@ class BOB
 	
 	
 	# Function to merge the config
-	private function assignConfiguration ($suppliedArguments)
+	private function assignConfiguration ($suppliedArguments)	// Supplied arguments comes from the config stub launching file
 	{
 		# If database config is used, retrieve that additional config
 		$defaults = $this->defaults;
@@ -709,8 +712,23 @@ class BOB
 			# Note there is no problem if this table has additional fields - these will be ignored in the mergeConfiguration() routine and will never get past that into the rest of the system
 			$query = "SELECT * FROM `{$this->config['dbDatabase']}`.`{$this->config['dbConfigTable']}` WHERE id = '" . mysql_real_escape_string ($this->config['id']) . "' LIMIT 1;";
 			if (!$data = $this->getData ($query)) {
-				$this->errors[] = "A database-stored configuration in the '<strong>" . htmlspecialchars ("{$this->config['dbDatabase']}.{$this->config['dbConfigTable']}") . "</strong>' table for an election with id '<strong>" . htmlspecialchars ($this->config['id']) . "</strong>' was specified but it could not be retrieved.";
-				return false;
+				
+				# If there is no staging database specified, throw an error
+				if (!$this->config['dbDatabaseStaging']) {
+					$this->errors[] = "A database-stored configuration in the '<strong>" . htmlspecialchars ("{$this->config['dbDatabase']}.{$this->config['dbConfigTable']}") . "</strong>' table for an election with id '<strong>" . htmlspecialchars ($this->config['id']) . "</strong>' was specified but it could not be retrieved.";
+					return false;
+				} else {
+					
+					# Now try to fallback to the staging database, ensuring that it is for a ballot that has not yet opened (which therefore prevents the use of the staging database for live votes)
+					$query = "SELECT * FROM `{$this->config['dbDatabaseStaging']}`.`{$this->config['dbConfigTable']}` WHERE id = '" . mysql_real_escape_string ($this->config['id']) . "' AND NOW() < ballotStart LIMIT 1;";
+					if (!$data = $this->getData ($query)) {
+						$this->errors[] = "A database-stored configuration in the '<strong>" . htmlspecialchars ("{$this->config['dbDatabaseStaging']}.{$this->config['dbConfigTable']}") . "</strong>' staging table for an election with id '<strong>" . htmlspecialchars ($this->config['id']) . "</strong>' was specified but it could not be retrieved.";
+						return false;
+					}
+					
+					# Set the staging database as the database to be used by the runtime
+					$suppliedArguments['dbDatabase'] = $this->config['dbDatabaseStaging'];
+				}
 			}
 			
 			# Ensure there is only one config; if not, the instances table doesn't have a unique key for id
@@ -730,6 +748,9 @@ class BOB
 		if (!$this->config = $this->mergeConfiguration ($defaults, $suppliedArguments)) {
 			return false;
 		}
+		
+		# Unset specification of the staging database as it is no longer required in the configuration
+		unset ($this->config['dbDatabaseStaging']);
 		
 		# Signal success
 		return true;

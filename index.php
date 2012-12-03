@@ -10,6 +10,7 @@ $config['id'] = 'testelection';
 $config['dbHostname'] = 'localhost';
 $config['dbPasswordFile'] = './dbpass';
 $config['dbDatabase'] = 'votes';
+$config['dbDatabaseStaging'] = false;	// or a different database name if the configuration is shifted from a staging database before the vote opens to the main append-only database
 $config['dbUsername'] = 'testvote';
 $config['dbSetupUsername'] = 'testvotesetup';
 
