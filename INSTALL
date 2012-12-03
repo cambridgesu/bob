@@ -1,0 +1,15 @@
+# $Id: INSTALL,v 1.2 2005/10/30 01:33:44 dme26 Exp $
+# 
+# BOB: Basic On-line Ballot-box
+# Copyright 2005 David Eyers.
+# Released under GPL. See file COPYING for license details.
+# 
+# These notes are hopelessly sketchy at the moment. 
+#
+# (1) Edit electionConf.pm 
+#     (i.e. set appropriate values for your ballot)
+# (2) Run "make election" or ./genElection.sh 
+#     (i.e. create the necessary PHP files + stub SQL)
+#
+# Running make with no target will provide some documentation
+#

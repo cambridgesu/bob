@@ -1,0 +1,9 @@
+$Id: AUTHORS,v 1.2 2005/10/30 23:36:41 dme26 Exp $
+
+BOB
+(Basic On-line Ballot-box)
+
+Initial software written by David.Eyers in email domain cantab.net
+
+Thanks to Simon Hopkins for greatly improving the error handling.
+Thanks to Robert Whittaker for suggestions regarding the database tables.
