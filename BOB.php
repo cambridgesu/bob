@@ -15,7 +15,7 @@
  *
  * Token word list Copyright The Internet Society (1998).
  *
- * Version 1.0.0
+ * Version 1.0.1
  *
  * Copyright (C) authors as above
  * 
@@ -2542,7 +2542,13 @@ print txt\"";
 			$output = $this->createProcess ($blts[$electionNumber], $pythonCommand);
 			if ($output) {
 				$output = str_replace ('<th>R</th>', '<th>Round</th>', $output);	// Make this description more obvious to non-experts
-				$listing .= $this->cleanHtml4 ($output);
+				# If the vote is tied, the system must not generate an output, because a page refresh will re-run the randomisation
+				#!# The full solution here is that the results should be cached once run
+				if (substr_count ($output, 'by breaking the tie randomly')) {
+					$listing .= "\n<p>This ballot was <strong>tied</strong>, so the Returning Officer will need to re-calculate the results manually from the <a href=\"./?showvotes#blt\">raw vote data</a> and toss a coin to determine the winner of this ballot.</p>";
+				} else {
+					$listing .= $this->cleanHtml4 ($output);
+				}
 			} else {
 				$listing .= "\n<p><em>The result could not be calculated. (Perhaps OpenSTV is not installed on the webserver?)<br />Please obtain a copy of OpenSTV yourself and save BLT files as above, to create the results yourself instead.</em></p>";
 			}
