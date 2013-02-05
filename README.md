@@ -15,16 +15,16 @@ This software is primarily being maintained for use within the CUSU online votin
 ## Warnings about unavoidable BOB voting process risks
 
 * The returning officer and anyone with access to the webserver, including read access to its logs, will know the times at which votes were cast and may therefore be able to break privacy to some extent.
-* The plain-text emails used to return receipts to voters and to the RO are vulnerable to interception. Read access to mailserver logs is also a possible privacy leak. Election officials may wish to disable the email receipts if this concerns them.
+* The plain-text emails used to return receipts to voters and to the returning officer are vulnerable to interception. Read access to mailserver logs is also a possible privacy leak. Election officials may wish to disable the email receipts if this concerns them.
 * The use of unique anonymous tokens to identify voters opens the system to coercion and vote-selling. There is essentially no way of fixing this without breaking more important properties such as usability and verifiability.
 * Further discussion of the risks and threats involved with BOB voting are included within the documentation in the distribution files. It is up to you to decide whether you are willing to take on these risks.
 
 ## Credits
 
-* David Eyers - http://www.cl.cam.ac.uk/~dme26/ - wrote the core electronic voting system workflow code
+* David Eyers - http://www.cl.cam.ac.uk/~dme26/ - wrote the [core electronic vote collection system](http://www.cl.cam.ac.uk/~dme26/proj/BOB/)
 * Martin Lucas-Smith - particularly added extra checks and balances, administration, configuration and installation support, and removed Perl installation stage
 * David Turner (@cl.cam)
-* Simon Hopkins (@gradunion.cam)
+* Simon Hopkins (previously @gradunion.cam)
 * Robert Whittaker (previously @gradunion.cam)
 
 ## Installation
