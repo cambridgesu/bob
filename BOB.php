@@ -1366,7 +1366,7 @@ class BOB
 		}
 		
 		# Compile the overall SQL; type is deliberately set to InnoDB so that rows are physically stored in the unique key order
-		$query = "CREATE TABLE `{$name}` (" . implode (', ', $fieldsSql) . ") TYPE=InnoDB CHARACTER SET utf8 COLLATE utf8_unicode_ci;";
+		$query = "CREATE TABLE `{$name}` (" . implode (', ', $fieldsSql) . ") ENGINE=InnoDB CHARACTER SET utf8 COLLATE utf8_unicode_ci;";
 		
 		# Create the table
 		if (!mysql_query ($query)) {
