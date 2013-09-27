@@ -1,15 +1,15 @@
 <?php
 
 ## Config file for BOB ##
-## All settings must be specified, except for these (which will revert to internal defaults if omitted): dbHostname,dbPasswordFile
+## All settings must be specified, except for these (which will revert to internal defaults if omitted): dbHostname
 
 # Unique name for this ballot
 $config['id'] = 'testelection';
 
 # Database connection details
 $config['dbHostname'] = 'localhost';
-$config['dbPasswordFile'] = './dbpass';
 $config['dbDatabase'] = 'votes';
+$config['dbPassword'] = 'your_password_goes_here';
 $config['dbDatabaseStaging'] = false;	// or a different database name if the configuration is shifted from a staging database before the vote opens to the main append-only database
 $config['dbUsername'] = 'testvote';
 $config['dbSetupUsername'] = 'testvotesetup';

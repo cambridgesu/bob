@@ -12,9 +12,6 @@ AAForceInteract On
 <Files ".ht*">
 	deny from all
 </Files>
-<Files "dbpass">
-	deny from all
-</Files>
 
 # Directory index to prevent file listings
 DirectoryIndex index.html index.php

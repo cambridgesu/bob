@@ -15,7 +15,7 @@
  *
  * Token word list Copyright The Internet Society (1998).
  *
- * Version 1.0.2
+ * Version 1.0.3
  *
  * Copyright (C) authors as above
  * 
@@ -47,15 +47,15 @@
 <?php
 
 ## Config file for BOB ##
-## All settings must be specified, except for these (which will revert to internal defaults if omitted): dbHostname,dbPasswordFile,urlMoreInfo,adminDuringElectionOK,randomisationInfo,referendumThresholdPercent,frontPageMessageHtml,afterVoteMessageHtml,organisationName,organisationUrl,organisationLogoUrl,headerLocation,footerLocation
+## All settings must be specified, except for these (which will revert to internal defaults if omitted): dbHostname,urlMoreInfo,adminDuringElectionOK,randomisationInfo,referendumThresholdPercent,frontPageMessageHtml,afterVoteMessageHtml,organisationName,organisationUrl,organisationLogoUrl,headerLocation,footerLocation
 
 # Unique identifier for this ballot
 $config['id'] = 'testelection';
 
 # Database connection details
 $config['dbHostname'] = 'localhost';
-$config['dbPasswordFile'] = './dbpass';
 $config['dbDatabase'] = 'testvote';
+$config['dbPassword'] = 'your_password_goes_here';
 $config['dbDatabaseStaging'] = false;	// or a different database name if the configuration is shifted from a staging database before the vote opens to the main append-only database
 $config['dbUsername'] = 'testvote';
 $config['dbSetupUsername'] = 'testvotesetup';
@@ -140,15 +140,15 @@ new BOB ($config);
 <?php
 
 ## Config file for BOB ##
-## All settings must be specified, except for these (which will revert to internal defaults if omitted): dbHostname,dbPasswordFile
+## All settings must be specified, except for these (which will revert to internal defaults if omitted): dbHostname
 
 # Unique name for this ballot
 $config['id'] = 'testelection';
 
 # Database connection details
 $config['dbHostname'] = 'localhost';
-$config['dbPasswordFile'] = './dbpass';
 $config['dbDatabase'] = 'testvote';
+$config['dbPassword'] = 'your_password_goes_here';
 $config['dbDatabaseStaging'] = false;
 $config['dbUsername'] = 'testvote';
 $config['dbSetupUsername'] = 'testvotesetup';
@@ -389,7 +389,7 @@ class BOB
 	private $defaults = array (
 		'id'					=> NULL,
 		'dbHostname'			=> 'localhost',
-		'dbPasswordFile'		=> './dbpass',
+		'dbPassword'			=> NULL,
 		'dbDatabase'			=> NULL,
 		'dbDatabaseStaging'		=> false,
 		'dbUsername'			=> NULL,
@@ -680,6 +680,9 @@ class BOB
 	# Function to convert the config to an HTML comment so a user can verify what is coming into the system
 	private function configHtml ($config, $sourceDescription)
 	{
+		# Blank out the password field
+		$config['dbPassword'] = '[...]';
+		
 		# Build the HTML
 		$html  = "\n\n<!-- This is the config {$sourceDescription}, with entity conversion added:\n\n";
 		$html .= htmlspecialchars (print_r ($config, true));	// HTML specialchars is essential to avoid a --> string closing the comment prematurely
@@ -1012,10 +1015,6 @@ class BOB
 			return false;
 		}
 		
-		# Ideally here there would be a check that the dbpass file is protected by HTTP Auth; however that is not possible as an HTTP request by this class will result in a Raven 302
-		// $location = $_SERVER['SCRIPT_URI'] . $this->config['dbPasswordFile'];
-		//
-		
 		# Ideally here there would be a check that the webserver process (e.g. Apache) is configured to emit UTF8; however Apache does not provide this so this is impossible
 		// 
 		
@@ -1162,9 +1161,6 @@ class BOB
 			&lt;Files ".ht*"&gt;
 				deny from all
 			&lt;/Files&gt;
-			&lt;Files "dbpass"&gt;
-				deny from all
-			&lt;/Files&gt;
 			
 			# Directory index to prevent file listings
 			DirectoryIndex index.html index.php
@@ -1180,24 +1176,8 @@ class BOB
 	# Function to establish a database connection
 	private function openDatabaseConnection ($dbUsername)
 	{
-		# Ensure the password file exists
-		if (!file_exists ($this->config['dbPasswordFile'])) {
-			$this->errors[] = 'The specified database password file does not exist.';
-			return false;
-		}
-		
-		# Ensure the password file is readable
-		if (!is_readable ($this->config['dbPasswordFile'])) {
-			$this->errors[] = 'The specified database password file is not readable.';
-			return false;
-		}
-		
-		# Read the password file; there is no error handling here as we have established that it exists and is readable
-		$password = file_get_contents ($this->config['dbPasswordFile']);
-		$password = trim ($password);
-		
 		# Connect to the database as the specified user
-		if (!$this->databaseConnection = @mysql_connect ($this->config['dbHostname'], $dbUsername, $password)) {
+		if (!$this->databaseConnection = @mysql_connect ($this->config['dbHostname'], $dbUsername, $this->config['dbPassword'])) {
 			$this->errors[] = "Error opening database connection with the database username '<strong>" . htmlspecialchars ($dbUsername) . "</strong>'. The database server said: '<em>" . htmlspecialchars (mysql_error ()) . "</em>'";
 			return false;
 		}
