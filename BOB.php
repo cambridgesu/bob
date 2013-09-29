@@ -2512,8 +2512,7 @@ os.unlink(temp.name)
 e = ERS97STV(b)
 e.runElection()
 r = HtmlReport(e)
-html = r.generateReport()
-print html
+r.generateReport()
 \"";
 		
 		# Create a droplist
