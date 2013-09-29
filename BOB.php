@@ -93,8 +93,8 @@ $config['organisationUrl'] = 'http://www.example.com/';
 $config['organisationLogoUrl'] = 'https://www.example.com/somelogo.png';	// Will be resized to height=60; Also, you are advised to put this on an https host to avoid security warnings
 
 # Location in the URL space of optional header and footer file; must start with /
-$config['headerLocation'] = '/style/prepended.html';
-$config['footerLocation'] = '/style/appended.html';
+$config['headerLocation'] = '/style/header.html';
+$config['footerLocation'] = '/style/footer.html';
 
 # Number of posts being elected; each position and the candidate names; each block separated by one line break
 # If any contain accented/etc. characters, ensure this file is saved as UTF-8 without a Byte Order Mark (BOM)
@@ -186,8 +186,8 @@ CREATE TABLE IF NOT EXISTS `instances` (
   `organisationName` varchar(255) collate utf8_unicode_ci default NULL COMMENT 'Organisation name',
   `organisationUrl` varchar(255) collate utf8_unicode_ci default NULL COMMENT 'Organisation URL',
   `organisationLogoUrl` varchar(255) collate utf8_unicode_ci default NULL COMMENT 'URL of organisation''s logo',
-  `headerLocation` varchar(255) collate utf8_unicode_ci default '/style/prepended.html' COMMENT 'Header house style file',
-  `footerLocation` varchar(255) collate utf8_unicode_ci default '/style/appended.html' COMMENT 'Footer house style file',
+  `headerLocation` varchar(255) collate utf8_unicode_ci default '/style/header.html' COMMENT 'Header house style file',
+  `footerLocation` varchar(255) collate utf8_unicode_ci default '/style/footer.html' COMMENT 'Footer house style file',
   `electionInfo` text collate utf8_unicode_ci NOT NULL COMMENT 'Election info: Number of positions being elected; Position title; Names of candidates; each block separated by one line break',
   `referendumThresholdPercent` int(3) default '10' COMMENT 'Percentage of voters who must cast a vote in a referendum for the referendum to be countable',
   `ballotStart` datetime NOT NULL COMMENT 'Start date/time of the ballot',

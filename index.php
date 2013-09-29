@@ -47,8 +47,8 @@ $config['organisationUrl'] = 'http://www.example.com/';
 $config['organisationLogoUrl'] = 'https://www.example.com/somelogo.png';	// Will be resized to height=100; Also, you are advised to put this on an https host to avoid security warnings
 
 # Location in the URL space of optional header and footer file; must start with /
-$config['headerLocation'] = '/style/prepended.html';
-$config['footerLocation'] = '/style/appended.html';
+$config['headerLocation'] = '/style/header.html';
+$config['footerLocation'] = '/style/footer.html';
 
 # Number of posts being elected; each position and the candidate names; each block separated by one line break
 # If any contain accented/etc. characters, ensure this file is saved as UTF-8 without a Byte Order Mark (BOM)
