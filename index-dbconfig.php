@@ -1,7 +1,7 @@
 <?php
 
 ## Config file for BOB ##
-## All settings must be specified, except for these (which will revert to internal defaults if omitted): dbHostname
+## All settings must be specified, except for these (which will revert to internal defaults if omitted): dbHostname,countingInstallation
 
 # Unique name for this ballot
 $config['id'] = 'testelection';
@@ -16,6 +16,9 @@ $config['dbSetupUsername'] = 'testvotesetup';
 
 # Optional database table containing the config which the dbSetupUsername has SELECT rights on
 $config['dbConfigTable'] = 'instances';
+
+# Counting installation config; must end /openstv/ (slash-terminated)
+$config['countingInstallation'] = '%documentroot/openstv/';
 
 
 # The database table must contain these fields, in addition to id as above:

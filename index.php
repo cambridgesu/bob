@@ -1,7 +1,7 @@
 <?php
 
 ## Config file for BOB ##
-## All settings must be specified, except for these (which will revert to internal defaults if omitted): dbHostname,urlMoreInfo,adminDuringElectionOK,randomisationInfo,frontPageMessageHtml,afterVoteMessageHtml,organisationName,organisationUrl,organisationLogoUrl,headerLocation,footerLocation
+## All settings must be specified, except for these (which will revert to internal defaults if omitted): dbHostname,countingInstallation,urlMoreInfo,adminDuringElectionOK,randomisationInfo,frontPageMessageHtml,afterVoteMessageHtml,organisationName,organisationUrl,organisationLogoUrl,headerLocation,footerLocation
 
 # Unique identifier for this ballot
 $config['id'] = 'testelection';
@@ -13,6 +13,9 @@ $config['dbPassword'] = 'your_password_goes_here';
 $config['dbDatabaseStaging'] = false;	// or a different database name if the configuration is shifted from a staging database before the vote opens to the main append-only database
 $config['dbUsername'] = 'testvote';
 $config['dbSetupUsername'] = 'testvotesetup';
+
+# Counting installation config; must end /openstv/ (slash-terminated)
+$config['countingInstallation'] = '%documentroot/openstv/';
 
 # Title and info about the ballot
 $config['title'] = "Some electronic ballot";	// Text, no HTML

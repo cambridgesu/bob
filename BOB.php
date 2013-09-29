@@ -15,7 +15,7 @@
  *
  * Token word list Copyright The Internet Society (1998).
  *
- * Version 1.0.4
+ * Version 1.0.5
  *
  * Copyright (C) authors as above
  * 
@@ -47,7 +47,7 @@
 <?php
 
 ## Config file for BOB ##
-## All settings must be specified, except for these (which will revert to internal defaults if omitted): dbHostname,urlMoreInfo,adminDuringElectionOK,randomisationInfo,referendumThresholdPercent,frontPageMessageHtml,afterVoteMessageHtml,organisationName,organisationUrl,organisationLogoUrl,headerLocation,footerLocation
+## All settings must be specified, except for these (which will revert to internal defaults if omitted): dbHostname,countingInstallation,urlMoreInfo,adminDuringElectionOK,randomisationInfo,referendumThresholdPercent,frontPageMessageHtml,afterVoteMessageHtml,organisationName,organisationUrl,organisationLogoUrl,headerLocation,footerLocation
 
 # Unique identifier for this ballot
 $config['id'] = 'testelection';
@@ -59,6 +59,9 @@ $config['dbPassword'] = 'your_password_goes_here';
 $config['dbDatabaseStaging'] = false;	// or a different database name if the configuration is shifted from a staging database before the vote opens to the main append-only database
 $config['dbUsername'] = 'testvote';
 $config['dbSetupUsername'] = 'testvotesetup';
+
+# Counting installation config; must end /openstv/ (slash-terminated)
+$config['countingInstallation'] = '%documentroot/openstv/';
 
 # Title and info about the ballot
 $config['title'] = "Some electronic ballot";	// Text, no HTML
@@ -140,7 +143,7 @@ new BOB ($config);
 <?php
 
 ## Config file for BOB ##
-## All settings must be specified, except for these (which will revert to internal defaults if omitted): dbHostname
+## All settings must be specified, except for these (which will revert to internal defaults if omitted): dbHostname,countingInstallation
 
 # Unique name for this ballot
 $config['id'] = 'testelection';
@@ -155,6 +158,9 @@ $config['dbSetupUsername'] = 'testvotesetup';
 
 # Optional database table containing the config which the dbSetupUsername has SELECT rights on
 $config['dbConfigTable'] = 'instances';
+
+# Counting installation config; must end /openstv/ (slash-terminated)
+$config['countingInstallation'] = '%documentroot/openstv/';
 
 
 # The database table must contain these fields, in addition to id as above:
@@ -395,6 +401,7 @@ class BOB
 		'dbUsername'			=> NULL,
 		'dbSetupUsername'		=> NULL,
 		'dbConfigTable'			=> false,
+		'countingInstallation'		=> '%documentroot/openstv/',		// Absolute path to counting installation; must end /openstv/ (slash-terminated) ; %documentroot can be used as a starting placeholder which will be substituted if present
 	);
 	
 	# Config defaults (setting both structure and default values; NULL means that the instantiator must supply a value) that can come from a database table; if not these will get merged with the above main defaults
@@ -490,7 +497,6 @@ class BOB
 	# Other class variables
 	#!# Some of these could be made into per-instance settings, e.g. logoutLocation and convertTo_CandidateToNumber
 	private $logoutLocation = 'logout.html';		// Logout location which will get inserted (unprocessed) into strings mentioning this
-	private $countingInstallation = '/openstv/';	// from DOCUMENT_ROOT
 	private $documentRoot = false;			// Document root, which will be derived from DOCUMENT_ROOT
 	private $headerHtml = '';				// HTML for the header
 	private $footerHtml = '';				// HTML for the footer
@@ -545,6 +551,12 @@ class BOB
 			return false;
 		}
 		
+		# Ensure that the DOCUMENT_ROOT is not slash-terminated
+		$this->documentRoot = $_SERVER['DOCUMENT_ROOT'];
+		if (substr ($_SERVER['DOCUMENT_ROOT'], -1) == '/') {
+			$this->documentRoot = substr ($_SERVER['DOCUMENT_ROOT'], 0, -1);
+		}
+		
 		# Ensure there is a username and assign it
 		if (!$this->username = $this->getUsername ()) {
 			$this->showErrors ();
@@ -582,6 +594,12 @@ class BOB
 		
 		# Ensure the server environment provides sufficient memory
 		if (!$this->environmentProvidesSufficientMemory ()) {
+			$this->showErrors ();
+			return false;
+		}
+		
+		# Ensure the counting program is correctly installed, if specified
+		if (!$this->countingProgramConfigValid ()) {
 			$this->showErrors ();
 			return false;
 		}
@@ -680,8 +698,9 @@ class BOB
 	# Function to convert the config to an HTML comment so a user can verify what is coming into the system
 	private function configHtml ($config, $sourceDescription)
 	{
-		# Blank out the password field
+		# Blank out the password field; and fields containing machine paths
 		$config['dbPassword'] = '[...]';
+		$config['countingInstallation'] = '[...]';
 		
 		# Build the HTML
 		$html  = "\n\n<!-- This is the config {$sourceDescription}, with entity conversion added:\n\n";
@@ -912,12 +931,6 @@ class BOB
 				return false;
 			}
 			
-			# Ensure that the DOCUMENT_ROOT is not slash-terminated
-			$this->documentRoot = $_SERVER['DOCUMENT_ROOT'];
-			if (substr ($_SERVER['DOCUMENT_ROOT'], -1) == '/') {
-				$this->documentRoot = substr ($_SERVER['DOCUMENT_ROOT'], 0, -1);
-			}
-			
 			# Construct the filename
 			$file = $this->documentRoot . $this->config[$configType];
 			
@@ -1134,6 +1147,32 @@ class BOB
 				$number *= 1024;
 		}
 		return $number;
+	}
+	
+	
+	# Function to check that the counting program is correctly installed, if specified
+	private function countingProgramConfigValid ()
+	{
+		# Return no problems if not required
+		if (!$this->config['countingInstallation']) {return true;}
+		
+		# Substitute placeholder %documentroot if present
+		$this->config['countingInstallation'] = preg_replace ('/^%documentroot/', $this->documentRoot, $this->config['countingInstallation']);
+		
+		# Ensure the path ends with '/openstv/' (slash-terminated)
+		if (!preg_match ('|/openstv/$|D', $this->config['countingInstallation'])) {
+                        $this->errors[] = "The countingInstallation option has been specified but does not end with /openstv/ - please ensure the program is installed as such, and the config option corrected.";
+			return false;
+		}
+		
+		# Ensure the directory is present and readable
+		if (!is_dir ($this->config['countingInstallation']) || !is_readable ($this->config['countingInstallation'])) {
+			$this->errors[] = "The countingInstallation option has been specified but does not appear to be present and readable.";
+			return false;
+		}
+		
+		# Signal that this test has been passed
+		return true;
 	}
 	
 	
@@ -2221,6 +2260,13 @@ EOF;
 			return false;
 		}
 		
+		# Disable if no counting installation set
+		if (!$this->config['countingInstallation']) {
+			echo "\n<p>Results cannot be displayed automatically, as this system does not have a compatible counting program installed.</p>";
+			echo "\n<p>Results can be calculated on a desktop computer using a program such as <a href=\"http://www.openstv.org/\" target=\"_blank\">OpenSTV</a> and using the BLT data on the <a href=\"./?showvotes#blt\">raw vote data</a> page.</p>";
+			return false;
+		}
+		
 		# Explain this page
 		echo "\n<p>This page shows the election results.<br />This has been calculated by taking the <a href=\"./?showvotes#blt\">raw vote data</a>, which you can view.</p>";
 		echo "\n<p>(You can repeat the result calculations yourself on a desktop computer, if you wish, using a program such as <a href=\"http://www.openstv.org/\" target=\"_blank\">OpenSTV</a> and using the BLT data on the <a href=\"./?showvotes#blt\">raw vote data</a> page.)</p>";
@@ -2440,6 +2486,9 @@ EOF;
 	# Function to perform a count based on BLT listings
 	private function countBlt ($ballots, $blts)
 	{
+		# Chop final openstv/ component off end, as the Python integration assumes the containing directory
+		$countingInstallation = realpath ($this->config['countingInstallation'] . '../') . '/';
+		
 		# Define the Python command used to process a ballot; see http://www.openstv.org/manual and http://groups.google.com/group/openstv/browse_frm/thread/38fcfcdee99ce3ff and http://groups.google.com/group/openstv/browse_thread/thread/c445290557242b9
 		// Available output formats are generateTextResults, generateERSCSVResults and generateHTMLResults
 		// NOTE: This wrapper code works for OpenSTV 1.6 only. Use BOB0.11.4 for OpenSTV 1.4, or BOB1.0.3 for OpenSTV 1.5.
@@ -2453,7 +2502,7 @@ temp.write(sys.stdin.read())
 temp.close()
 
 # Process the ballot
-sys.path.append('" . $this->documentRoot . $this->countingInstallation . "')
+sys.path.append('" . $countingInstallation . "')
 from openstv.ballots import Ballots
 from openstv.MethodPlugins.ERS97STV import ERS97STV
 from openstv.ReportPlugins.HtmlReport import HtmlReport
