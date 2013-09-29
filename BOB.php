@@ -2520,13 +2520,12 @@ print html
 			# Attempt to execute the command
 			$output = $this->createProcess ($pythonCommand, $blts[$electionNumber]);
 			if ($output) {
-				$output = str_replace ('<th>R</th>', '<th>Round</th>', $output);	// Make this description more obvious to non-experts
 				# If the vote is tied, the system must not generate an output, because a page refresh will re-run the randomisation
 				#!# The full solution here is that the results should be cached once run
 				if (substr_count ($output, 'by breaking the tie randomly')) {
 					$listing .= "\n<p>This ballot was <strong>tied</strong>, so the Returning Officer will need to re-calculate the results manually from the <a href=\"./?showvotes#blt\">raw vote data</a> and toss a coin to determine the winner of this ballot.</p>";
 				} else {
-					$listing .= $this->cleanHtml4 ($output);
+					$listing .= $this->cleanCountOutput ($output);
 				}
 			} else {
 				$listing .= "\n<p><em>The result could not be calculated. (Perhaps OpenSTV is not installed on the webserver?)<br />Please obtain a copy of OpenSTV yourself and save BLT files as above, to create the results yourself instead.</em></p>";
@@ -2634,16 +2633,15 @@ print html
 	}
 	
 	
-	# Function to clean the HTML4 output from OpenSTV
-	#!# this can be removed if OpenSTV moves to more semantic HTML
-	private function cleanHtml4 ($html)
+	# Function to clean the HTML output from OpenSTV
+	private function cleanCountOutput ($html)
 	{
 		# Clean non-body HTML, i.e. just leave the content
 		$html = preg_replace ('~<!DOCTYPE.+<body>~s', '', $html);
 		$html = str_replace (array ('</body>', '</html>'), '', $html);
 		
-		# Clean prefix, to avoid showing the tmpfile name
-		$html = preg_replace ('~<p class="overview">.+Loading ballots from file ([^<]+)<br>\n~s', '<p class="overview">', $html);
+		# Clean prefix, to avoid redisplaying the title and to avoid showing the tmpfile name
+		$html = preg_replace ('~<h3 class="title">.+Loading ballots from file ([^<]+)<br>\n~s', '<p class="overview">', $html);
 		
 		# Clean table specification
 		$html = str_replace ('<table class="rounds">', '<table class="rounds border lines">', $html);
