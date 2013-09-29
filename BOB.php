@@ -2221,14 +2221,6 @@ EOF;
 			return false;
 		}
 		
-		# Disable counting on Windows, as the BLT count won't work
-		$isWindowsHosting = (strtoupper (substr (PHP_OS, 0, 3)) === 'WIN');
-		if ($isWindowsHosting) {
-			echo "\n<p>Results cannot be displayed automatically, as this system does not have a compatible counting program installed.</p>";
-			echo "\n<p>Results can be calculated on a desktop computer using a program such as <a href=\"http://www.openstv.org/\" target=\"_blank\">OpenSTV</a> and using the BLT data on the <a href=\"./?showvotes#blt\">raw vote data</a> page.</p>";
-			return false;
-		}
-		
 		# Explain this page
 		echo "\n<p>This page shows the election results.<br />This has been calculated by taking the <a href=\"./?showvotes#blt\">raw vote data</a>, which you can view.</p>";
 		echo "\n<p>(You can repeat the result calculations yourself on a desktop computer, if you wish, using a program such as <a href=\"http://www.openstv.org/\" target=\"_blank\">OpenSTV</a> and using the BLT data on the <a href=\"./?showvotes#blt\">raw vote data</a> page.)</p>";
@@ -2450,10 +2442,9 @@ EOF;
 	{
 		# Define the Python command used to process a ballot; see http://www.openstv.org/manual and http://groups.google.com/group/openstv/browse_frm/thread/38fcfcdee99ce3ff and http://groups.google.com/group/openstv/browse_thread/thread/c445290557242b9
 		// Available output formats are generateTextResults, generateERSCSVResults and generateHTMLResults
-		// The use of /dev/stdin means this the count will not work on a Windows host
 		// NOTE: This wrapper code works for OpenSTV 1.6 only. Use BOB0.11.4 for OpenSTV 1.4, or BOB1.0.3 for OpenSTV 1.5.
 		$pythonCommand = "python -c \"
-# Convert STDIN to tempfile (/dev/stdin can't be used for seek() in BltBallotLoader.py, and StringIO can't be used as elsewhere the 'file' is opened
+# Convert STDIN to tempfile (STDIN can't be used for seek() in BltBallotLoader.py, and StringIO can't be used as elsewhere the 'file' is opened)
 import os
 import sys
 import tempfile
