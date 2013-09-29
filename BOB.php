@@ -766,7 +766,7 @@ class BOB
 			$suppliedArguments = array_merge ($data[0], $suppliedArguments);
 		}
 		
-		# Merge in the non-core ('databaseable') defaults
+		# Merge in the non-core ('databaseable') defaults; file (non-databaseable) defaults take priority
 		$defaults += $this->defaultsDatabaseable;
 		
 		# Merge the full configuration (or end if failure) and make the full config available as a class variable
