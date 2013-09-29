@@ -15,7 +15,7 @@
  *
  * Token word list Copyright The Internet Society (1998).
  *
- * Version 1.0.3
+ * Version 1.0.4
  *
  * Copyright (C) authors as above
  * 
@@ -982,7 +982,7 @@ class BOB
 			ul.explanation {margin: 0; padding: 0;}
 			ul.explanation li {list-style: none; margin-left: 10px; padding-left: 10px;}
 			p.winner {color: #603; font-weight: bold; font-size: 1.2em;}
-			table.lines td.transferexplanation {padding-bottom: 1.25em;}
+			table.lines td.comment {padding-bottom: 1.25em;}
 			table.regulated td.key p {width: 150px;}
 			@media print {
 				body {background-color: #fff; color: #000;}
@@ -2451,22 +2451,30 @@ EOF;
 		# Define the Python command used to process a ballot; see http://www.openstv.org/manual and http://groups.google.com/group/openstv/browse_frm/thread/38fcfcdee99ce3ff and http://groups.google.com/group/openstv/browse_thread/thread/c445290557242b9
 		// Available output formats are generateTextResults, generateERSCSVResults and generateHTMLResults
 		// The use of /dev/stdin means this the count will not work on a Windows host
-		// NOTE: This wrapper code works for OpenSTV 1.5 only. Use BOB0.11.4 for OpenSTV 1.4. This wrapper code will apparently not work for the forthcoming OpenSTV 1.6.
+		// NOTE: This wrapper code works for OpenSTV 1.6 only. Use BOB0.11.4 for OpenSTV 1.4, or BOB1.0.3 for OpenSTV 1.5.
 		$pythonCommand = "python -c \"
-import sys
+# Convert STDIN to tempfile (/dev/stdin can't be used for seek() in BltBallotLoader.py, and StringIO can't be used as elsewhere the 'file' is opened
 import os
+import sys
+import tempfile
+temp = tempfile.NamedTemporaryFile(delete=False)
+temp.write(sys.stdin.read())
+temp.close()
+
+# Process the ballot
 sys.path.append('" . $this->documentRoot . $this->countingInstallation . "')
-os.chdir('" . $this->documentRoot . $this->countingInstallation . "')
-from ballots import Ballots
-from MethodPlugins.ERS97STV import ERS97STV
-from report import HTMLReport
+from openstv.ballots import Ballots
+from openstv.MethodPlugins.ERS97STV import ERS97STV
+from openstv.ReportPlugins.HtmlReport import HtmlReport
 b = Ballots()
-b.loadKnown(r'/dev/stdin', 'blt')
+b.loadKnown(temp.name, 'blt')
+os.unlink(temp.name)
 e = ERS97STV(b)
 e.runElection()
-r = HTMLReport(e)
-txt = r.generateReport()
-print txt\"";
+r = HtmlReport(e)
+html = r.generateReport()
+print html
+\"";
 		
 		# Create a droplist
 		$dropList = array ();
@@ -2519,7 +2527,7 @@ print txt\"";
 			}
 			
 			# Attempt to execute the command
-			$output = $this->createProcess ($blts[$electionNumber], $pythonCommand);
+			$output = $this->createProcess ($pythonCommand, $blts[$electionNumber]);
 			if ($output) {
 				$output = str_replace ('<th>R</th>', '<th>Round</th>', $output);	// Make this description more obvious to non-experts
 				# If the vote is tied, the system must not generate an output, because a page refresh will re-run the randomisation
@@ -2540,13 +2548,13 @@ print txt\"";
 	
 	
 	# Function to handle running a python process securely without writing out any files
-	private function createProcess ($string, $command)
+	private function createProcess ($command, $string)
 	{
 		# Set the descriptors
 		$descriptorspec = array (
 			0 => array ('pipe', 'r'),  // stdin is a pipe that the child will read from
 			1 => array ('pipe', 'w'),  // stdout is a pipe that the child will write to
-			// 2 => array("file", "/tmp/error-output.txt", "a") // stderr is a file to write to
+			// 2 => array ('file', '/tmp/error-output.txt', 'a') // stderr is a file to write to
 		);
 		
 		# Assume failure unless the command works
@@ -2643,19 +2651,14 @@ print txt\"";
 		$html = preg_replace ('~<!DOCTYPE.+<body>~s', '', $html);
 		$html = str_replace (array ('</body>', '</html>'), '', $html);
 		
+		# Clean prefix, to avoid showing the tmpfile name
+		$html = preg_replace ('~<p class="overview">.+Loading ballots from file ([^<]+)<br>\n~s', '<p class="overview">', $html);
+		
 		# Clean table specification
-		$html = str_replace ('<table border=1 cellspacing=0>', '<table class="countrounds border lines">', $html);
-		$html = str_replace ("<td align='center'", '<td', $html);
-		$html = str_replace ("<th align='center'", '<th', $html);
-		$html = preg_replace ('~<td (rowspan|colspan)=([0-9]+)>~', '<td \1="\2">', $html);
-		$html = str_replace ('<td colspan="', '<td class="transferexplanation" colspan="', $html);
+		$html = str_replace ('<table class="rounds">', '<table class="rounds border lines">', $html);
 		
 		# Convert breaks to XHTML
 		$html = str_replace ('<br>', '<br />', $html);
-		
-		# Convert opening text block to a real paragraph rather than text with line-breaks
-		$html = "\n<p class=\"overview\">" . $html;
-		$html = preg_replace ("~<br />\s+<br />\s+<table~s", "</p>\n\n<table", $html);
 		
 		# Add a class for the winner
 		$html = str_replace ('<p>Winner is', '<p class="winner">Winner is', $html);
