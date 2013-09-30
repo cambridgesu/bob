@@ -15,7 +15,7 @@
  *
  * Token word list Copyright The Internet Society (1998).
  *
- * Version 1.0.5
+ * Version 1.0.6
  *
  * Copyright (C) authors as above
  * 
@@ -906,6 +906,10 @@ class BOB
 	<head>
 		<title>Online voting</title>
 		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+		<style type="text/css">
+			body {font-family: sans-serif;}
+			h2 {font-size: 1.3em; margin-top: 2.2em; margin-bottom: 0.6em;}
+		</style>
 	</head>
 	<body>
   		' . "\n\n\n";
@@ -974,15 +978,13 @@ class BOB
 		# Inject additional styles into the header
 		$stylesHtml = '
 		<style type="text/css">
-			body {font-family: sans-serif;}
 			table.vote {border: 1px; border-collapse: collapse; border-spacing: 0px;}
 			table.vote td, table.vote th {border: 2px #ddd solid; padding: 3px;}
 			.votemsg {border:1px solid #bbbbbb; background: #eeeeee; padding: 4px;}
 			div.problem {color: red; border: 2px solid red; padding: 2px 10px;}
 			option {color: #603;}
-			h2 {font-size: 1.3em; margin-top: 2.2em; margin-bottom: 0.6em;}
 			.comment {color: #444;}
-			p.loginstatus {float: right; text-align: right;}
+			p.loggedinas {text-align: right;}
 			h2.unit, h2.paperballots {page-break-before: always;}
 			table.paperroll th {min-width: 150px;}
 			table.ballotpapers {width: 85%;}
@@ -1649,7 +1651,7 @@ class BOB
 			$html .= "\n\t\t" . '<li><strong>Current status:</strong> The ballot has now closed.</li>';
 		}
 		if ($this->afterBallotView) {
-			$html .= "\n\t\t" . "<li class=\"showvotes\"><a href=\"./?results\">View results<br />of election</a></li>";
+			$html .= "\n\t\t" . "<li class=\"showvotes\"><a href=\"./?results\">View results of election</a></li>";
 			$html .= "\n\t\t" . "<li class=\"spaced showvotes\"><a href=\"./?showvotes\">View list of votes cast" . ($this->splitElection ? ' electronically' : '') . ' (total ' . number_format ($this->totalVoted) . ')</a></li>';
 		}
 		if ($this->duringElection || ($this->splitElection && $this->afterElection && !$this->afterBallotView)) {
