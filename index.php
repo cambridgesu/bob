@@ -1,7 +1,7 @@
 <?php
 
 ## Config file for BOB ##
-## All settings must be specified, except for these (which will revert to internal defaults if omitted): dbHostname,countingInstallation,urlMoreInfo,adminDuringElectionOK,randomisationInfo,frontPageMessageHtml,afterVoteMessageHtml,organisationName,organisationUrl,organisationLogoUrl,headerLocation,footerLocation
+## All settings must be specified, except for these (which will revert to internal defaults if omitted): dbHostname,countingInstallation,countingMethod,urlMoreInfo,adminDuringElectionOK,randomisationInfo,frontPageMessageHtml,afterVoteMessageHtml,organisationName,organisationUrl,organisationLogoUrl,headerLocation,footerLocation
 
 # Unique identifier for this ballot
 $config['id'] = 'testelection';
@@ -16,6 +16,7 @@ $config['dbSetupUsername'] = 'testvotesetup';
 
 # Counting installation config; must end /openstv/ (slash-terminated)
 $config['countingInstallation'] = '%documentroot/openstv/';
+$config['countingMethod'] = 'ERS97STV';
 
 # Title and info about the ballot
 $config['title'] = "Some electronic ballot";	// Text, no HTML

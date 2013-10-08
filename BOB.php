@@ -15,7 +15,7 @@
  *
  * Token word list Copyright The Internet Society (1998).
  *
- * Version 1.0.7
+ * Version 1.0.8
  *
  * Copyright (C) authors as above
  * 
@@ -47,7 +47,7 @@
 <?php
 
 ## Config file for BOB ##
-## All settings must be specified, except for these (which will revert to internal defaults if omitted): dbHostname,countingInstallation,urlMoreInfo,adminDuringElectionOK,randomisationInfo,referendumThresholdPercent,frontPageMessageHtml,afterVoteMessageHtml,organisationName,organisationUrl,organisationLogoUrl,headerLocation,footerLocation
+## All settings must be specified, except for these (which will revert to internal defaults if omitted): dbHostname,countingInstallation,countingMethod,urlMoreInfo,adminDuringElectionOK,randomisationInfo,referendumThresholdPercent,frontPageMessageHtml,afterVoteMessageHtml,organisationName,organisationUrl,organisationLogoUrl,headerLocation,footerLocation
 
 # Unique identifier for this ballot
 $config['id'] = 'testelection';
@@ -62,6 +62,7 @@ $config['dbSetupUsername'] = 'testvotesetup';
 
 # Counting installation config; must end /openstv/ (slash-terminated)
 $config['countingInstallation'] = '%documentroot/openstv/';
+$config['countingMethod'] = 'ERS97STV';
 
 # Title and info about the ballot
 $config['title'] = "Some electronic ballot";	// Text, no HTML
@@ -143,7 +144,7 @@ new BOB ($config);
 <?php
 
 ## Config file for BOB ##
-## All settings must be specified, except for these (which will revert to internal defaults if omitted): dbHostname,countingInstallation
+## All settings must be specified, except for these (which will revert to internal defaults if omitted): dbHostname,countingInstallation,countingMethod
 
 # Unique name for this ballot
 $config['id'] = 'testelection';
@@ -161,6 +162,7 @@ $config['dbConfigTable'] = 'instances';
 
 # Counting installation config; must end /openstv/ (slash-terminated)
 $config['countingInstallation'] = '%documentroot/openstv/';
+$config['countingMethod'] = 'ERS97STV';
 
 
 # The database table must contain these fields, in addition to id as above:
@@ -402,6 +404,7 @@ class BOB
 		'dbSetupUsername'		=> NULL,
 		'dbConfigTable'			=> false,
 		'countingInstallation'		=> '%documentroot/openstv/',		// Absolute path to counting installation; must end /openstv/ (slash-terminated) ; %documentroot can be used as a starting placeholder which will be substituted if present
+		'countingMethod'		=> 'ERS97STV',				// Method as per the list at https://github.com/cusu/openstv/tree/master/openstv/MethodPlugins
 	);
 	
 	# Config defaults (setting both structure and default values; NULL means that the instantiator must supply a value) that can come from a database table; if not these will get merged with the above main defaults
@@ -2506,12 +2509,12 @@ temp.close()
 # Process the ballot
 sys.path.append('" . $countingInstallation . "')
 from openstv.ballots import Ballots
-from openstv.MethodPlugins.ERS97STV import ERS97STV
+from openstv.MethodPlugins.{$this->config['countingMethod']} import {$this->config['countingMethod']}
 from openstv.ReportPlugins.HtmlReport import HtmlReport
 b = Ballots()
 b.loadKnown(temp.name, 'blt')
 os.unlink(temp.name)
-e = ERS97STV(b)
+e = {$this->config['countingMethod']}(b)
 e.runElection()
 r = HtmlReport(e)
 r.generateReport()
