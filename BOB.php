@@ -15,7 +15,7 @@
  *
  * Token word list Copyright The Internet Society (1998).
  *
- * Version 1.0.6
+ * Version 1.0.7
  *
  * Copyright (C) authors as above
  * 
@@ -2493,7 +2493,7 @@ EOF;
 		
 		# Define the Python command used to process a ballot; see http://www.openstv.org/manual and http://groups.google.com/group/openstv/browse_frm/thread/38fcfcdee99ce3ff and http://groups.google.com/group/openstv/browse_thread/thread/c445290557242b9
 		// Available output formats are generateTextResults, generateERSCSVResults and generateHTMLResults
-		// NOTE: This wrapper code works for OpenSTV 1.6 only. Use BOB0.11.4 for OpenSTV 1.4, or BOB1.0.3 for OpenSTV 1.5.
+		// NOTE: This wrapper code works for OpenSTV 1.7 (and 1.6) only. Use BOB0.11.4 for OpenSTV 1.4, or BOB1.0.3 for OpenSTV 1.5.
 		$pythonCommand = "python -c \"
 # Convert STDIN to tempfile (STDIN can't be used for seek() in BltBallotLoader.py, and StringIO can't be used as elsewhere the 'file' is opened)
 import os
