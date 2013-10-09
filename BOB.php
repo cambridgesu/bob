@@ -1005,7 +1005,7 @@ class BOB
 			#stampbox {float: right; width: 200px; height: 150px; display: block; border: 4px solid #aaa; margin: 20px 0 20px 20px; padding: 10px;}
 			ul.explanation {margin: 0; padding: 0;}
 			ul.explanation li {list-style: none; margin-left: 10px; padding-left: 10px;}
-			p.winner {color: #603; font-weight: bold; font-size: 1.2em;}
+			p.winner {color: #603; font-weight: bold; font-size: 1.2em; background-image: url(/images/icons/bullet_go.png); background-position: 5px 1px; background-repeat: no-repeat; padding-left: 28px;}
 			table.lines td.comment {padding-bottom: 1.25em;}
 			table.regulated td.key p {width: 150px;}
 			@media print {
