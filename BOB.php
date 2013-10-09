@@ -15,7 +15,7 @@
  *
  * Token word list Copyright The Internet Society (1998).
  *
- * Version 1.0.8
+ * Version 1.0.9
  *
  * Copyright (C) authors as above
  * 
@@ -197,7 +197,7 @@ CREATE TABLE IF NOT EXISTS `instances` (
   `headerLocation` varchar(255) collate utf8_unicode_ci default '/style/header.html' COMMENT 'Header house style file',
   `footerLocation` varchar(255) collate utf8_unicode_ci default '/style/footer.html' COMMENT 'Footer house style file',
   `electionInfo` text collate utf8_unicode_ci NOT NULL COMMENT 'Election info: Number of positions being elected; Position title; Names of candidates; each block separated by one line break',
-  `referendumThresholdPercent` int(3) default '10' COMMENT 'Percentage of voters who must cast a vote in a referendum for the referendum to be countable',
+  `referendumThresholdPercent` int(2) default '10' COMMENT 'Percentage of voters who must cast a vote in a referendum for the referendum to be countable',
   `ballotStart` datetime NOT NULL COMMENT 'Start date/time of the ballot',
   `ballotEnd` datetime NOT NULL COMMENT 'End date/time of the ballot',
   `ballotViewable` datetime NOT NULL COMMENT 'Date/time when the cast votes can be viewed',
