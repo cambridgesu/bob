@@ -179,7 +179,7 @@ new BOB ($config);
 
  *	
 	E.g. to create the instances table, use the following.
-	Note that, in a managed GUI voting scenario, the items commented out with -- may be wanted.
+	Note that, in a managed GUI voting scenario, the items commented out with -- may be wanted. They are not needed by BOB itself.
 
 CREATE TABLE IF NOT EXISTS `instances` (
    `id` varchar(255) collate utf8_unicode_ci NOT NULL COMMENT 'Generated globally-unique ID',
