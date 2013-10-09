@@ -185,6 +185,7 @@ CREATE TABLE IF NOT EXISTS `instances` (
   `id` varchar(255) collate utf8_unicode_ci NOT NULL COMMENT 'Generated globally-unique ID',
   `title` varchar(255) collate utf8_unicode_ci NOT NULL COMMENT 'Title of this ballot',
   `urlMoreInfo` varchar(255) collate utf8_unicode_ci default NULL COMMENT 'URL for more info about the ballot',
+  `frontPageMessageHtml` varchar(255) collate utf8_unicode_ci default NULL COMMENT 'Optional front-page message',
   `afterVoteMessageHtml` varchar(255) collate utf8_unicode_ci default NULL COMMENT 'An extra message, if any, which people will see when they have voted',
   `emailReturningOfficer` varchar(255) collate utf8_unicode_ci NOT NULL COMMENT 'E-mail address of Returning Officer / mailbox',
   `emailTech` varchar(255) collate utf8_unicode_ci NOT NULL COMMENT 'E-mail address of Technical Administrator',
