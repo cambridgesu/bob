@@ -178,31 +178,36 @@ new BOB ($config);
 
 
  *	
-	e.g. to create the instances table, use:
-
+	E.g. to create the instances table, use the following.
+	Note that, in a managed GUI voting scenario, the items commented out with -- may be wanted.
 
 CREATE TABLE IF NOT EXISTS `instances` (
-  `id` varchar(255) collate utf8_unicode_ci NOT NULL COMMENT 'Generated globally-unique ID',
-  `title` varchar(255) collate utf8_unicode_ci NOT NULL COMMENT 'Title of this ballot',
-  `urlMoreInfo` varchar(255) collate utf8_unicode_ci default NULL COMMENT 'URL for more info about the ballot',
-  `frontPageMessageHtml` varchar(255) collate utf8_unicode_ci default NULL COMMENT 'Optional front-page message',
-  `afterVoteMessageHtml` varchar(255) collate utf8_unicode_ci default NULL COMMENT 'An extra message, if any, which people will see when they have voted',
-  `emailReturningOfficer` varchar(255) collate utf8_unicode_ci NOT NULL COMMENT 'E-mail address of Returning Officer / mailbox',
-  `emailTech` varchar(255) collate utf8_unicode_ci NOT NULL COMMENT 'E-mail address of Technical Administrator',
-  `officialsUsernames` varchar(255) collate utf8_unicode_ci NOT NULL COMMENT 'Usernames of Returning Officer + Sysadmins',
-  `randomisationInfo` enum('','Candidate order has been automatically randomised','Candidate order has been automatically alphabetised','Candidates have been entered by the Returning Officer in the order shown') collate utf8_unicode_ci default NULL COMMENT 'Candidate ordering/randomisation',
-  `adminDuringElectionOK` int(1) default '0' COMMENT 'Whether the administrator can access admin pages during the election',
-  `organisationName` varchar(255) collate utf8_unicode_ci default NULL COMMENT 'Organisation name',
-  `organisationUrl` varchar(255) collate utf8_unicode_ci default NULL COMMENT 'Organisation URL',
-  `organisationLogoUrl` varchar(255) collate utf8_unicode_ci default NULL COMMENT 'URL of organisation''s logo',
-  `headerLocation` varchar(255) collate utf8_unicode_ci default '/style/header.html' COMMENT 'Header house style file',
-  `footerLocation` varchar(255) collate utf8_unicode_ci default '/style/footer.html' COMMENT 'Footer house style file',
-  `electionInfo` text collate utf8_unicode_ci NOT NULL COMMENT 'Election info: Number of positions being elected; Position title; Names of candidates; each block separated by one line break',
-  `referendumThresholdPercent` int(2) default '10' COMMENT 'Percentage of voters who must cast a vote in a referendum for the referendum to be countable',
-  `ballotStart` datetime NOT NULL COMMENT 'Start date/time of the ballot',
-  `ballotEnd` datetime NOT NULL COMMENT 'End date/time of the ballot',
-  `ballotViewable` datetime NOT NULL COMMENT 'Date/time when the cast votes can be viewed',
-  PRIMARY KEY  (`id`)
+   `id` varchar(255) collate utf8_unicode_ci NOT NULL COMMENT 'Generated globally-unique ID',
+-- `url` varchar(255) collate utf8_unicode_ci NOT NULL COMMENT 'Computed URL location of this ballot',
+-- `academicYear` varchar(5) collate utf8_unicode_ci NOT NULL COMMENT 'Computed academic year string',
+-- `urlSlug` varchar(20) collate utf8_unicode_ci NOT NULL COMMENT 'Unique identifier for this ballot',
+-- `provider` varchar(255) collate utf8_unicode_ci NOT NULL COMMENT 'Provider name',
+-- `organisation` varchar(255) collate utf8_unicode_ci NOT NULL COMMENT 'Organisation name',
+   `title` varchar(255) collate utf8_unicode_ci NOT NULL COMMENT 'Title of this ballot',
+   `urlMoreInfo` varchar(255) collate utf8_unicode_ci default NULL COMMENT 'URL for more info about the ballot',
+   `frontPageMessageHtml` varchar(255) collate utf8_unicode_ci default NULL COMMENT 'Optional front-page message',
+   `afterVoteMessageHtml` varchar(255) collate utf8_unicode_ci default NULL COMMENT 'An extra message, if any, which people will see when they have voted',
+   `emailReturningOfficer` varchar(255) collate utf8_unicode_ci NOT NULL COMMENT 'E-mail address of Returning Officer / mailbox',
+   `emailTech` varchar(255) collate utf8_unicode_ci NOT NULL COMMENT 'E-mail address of Technical Administrator',
+   `officialsUsernames` varchar(255) collate utf8_unicode_ci NOT NULL COMMENT 'Usernames of Returning Officer + Sysadmins',
+   `randomisationInfo` enum('','Candidate order has been automatically randomised','Candidate order has been automatically alphabetised','Candidates have been entered by the Returning Officer in the order shown') collate utf8_unicode_ci default NULL COMMENT 'Candidate ordering/randomisation',
+   `organisationName` varchar(255) collate utf8_unicode_ci default NULL COMMENT 'Organisation name',
+   `organisationUrl` varchar(255) collate utf8_unicode_ci default NULL COMMENT 'Organisation URL',
+   `organisationLogoUrl` varchar(255) collate utf8_unicode_ci default NULL COMMENT 'URL of organisation''s logo',
+-- `addRon` enum('','Yes','No') collate utf8_unicode_ci NOT NULL COMMENT 'Should Re-Open Nominations (RON) be automatically added as an additional candidate in each election?',
+   `electionInfo` text collate utf8_unicode_ci NOT NULL COMMENT 'Election info: Number of positions being elected; Position title; Names of candidates; each block separated by one line break',
+-- `electionInfoAsEntered` text collate utf8_unicode_ci NOT NULL COMMENT 'Election info',
+   `referendumThresholdPercent` int(2) default '10' COMMENT 'Percentage of voters who must cast a vote in a referendum for the referendum to be countable',
+   `ballotStart` datetime NOT NULL COMMENT 'Start date/time of the ballot',
+   `ballotEnd` datetime NOT NULL COMMENT 'End date/time of the ballot',
+   `ballotViewable` datetime NOT NULL COMMENT 'Date/time when the cast votes can be viewed',
+-- `instanceCompleteTimestamp` datetime default NULL COMMENT 'Timestamp for when the instance (configuration and voters list) is complete',
+   PRIMARY KEY  (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 
