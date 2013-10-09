@@ -1,7 +1,5 @@
 # BOB: a Basic On line Ballot box
 
-First things first: Electronic voting is a thorny topic, and unavoidably so. Please think very carefully about the risks involved, and definitely do not assume that we've done so for you.
-
 The BOB system is designed to be an electronic version of a ballot box for Single Transferable Voting elections.
 
 Vote counting can be done for you, if you enable the option for running the results through an OpenSTV count.
@@ -13,6 +11,8 @@ We hope this software might be useful to you, but as the GPL says, this code doe
 This software is primarily being maintained for use within the CUSU online voting system - https://www.cusu.cam.ac.uk/elections/system/ .
 
 ## Warnings about unavoidable BOB voting process risks
+
+First things first: Electronic voting is a thorny topic, and unavoidably so. Please think very carefully about the risks involved. However, we have given a great deal of consideration and put much work into the BOB software and its optional administrative GUI on security and assurance issues.
 
 * The returning officer and anyone with access to the webserver, including read access to its logs, will know the times at which votes were cast and may therefore be able to break privacy to some extent.
 * The plain-text emails used to return receipts to voters and to the returning officer are vulnerable to interception. Read access to mailserver logs is also a possible privacy leak. Election officials may wish to disable the email receipts if this concerns them.
