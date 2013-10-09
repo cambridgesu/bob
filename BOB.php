@@ -860,9 +860,9 @@ class BOB
 			$this->config[$time] = mktime ($hour, $minute, $second, $month, $day, $year);
 		}
 		
-		# Validate that the startBallot, endBallot and viewBallot are in that order and that startBallot and endBallot are not equal (though viewBallot can be at the same time as endBallot)
+		# Validate that ballotStart, ballotEnd and ballotViewable are in that order and that ballotStart and ballotEnd are not equal (though ballotViewable can be at the same time as ballotEnd)
 		if (($this->config['ballotEnd'] <= $this->config['ballotStart']) || ($this->config['ballotViewable'] < $this->config['ballotEnd'])) {
-			$this->errors[] = "The time settings for this ballot in the configuration are wrong. They must be in the order: startBallot, endBallot and viewBallot.";
+			$this->errors[] = "The time settings for this ballot in the configuration are wrong. They must be in the order: ballotStart, ballotEnd and ballotViewable.";
 			return false;
 		}
 		
