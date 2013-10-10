@@ -15,7 +15,7 @@
  *
  * Token word list Copyright The Internet Society (1998).
  *
- * Version 1.0.9
+ * Version 1.0.10
  *
  * Copyright (C) authors as above
  * 
@@ -47,7 +47,7 @@
 <?php
 
 ## Config file for BOB ##
-## All settings must be specified, except for these (which will revert to internal defaults if omitted): dbHostname,countingInstallation,countingMethod,urlMoreInfo,adminDuringElectionOK,randomisationInfo,referendumThresholdPercent,frontPageMessageHtml,afterVoteMessageHtml,organisationName,organisationUrl,organisationLogoUrl,headerLocation,footerLocation
+## All settings must be specified, except for these (which will revert to internal defaults if omitted): dbHostname,countingInstallation,countingMethod,urlMoreInfo,adminDuringElectionOK,randomisationInfo,referendumThresholdPercent,frontPageMessageHtml,afterVoteMessageHtml,disableListWhoVoted,organisationName,organisationUrl,organisationLogoUrl,headerLocation,footerLocation
 
 # Unique identifier for this ballot
 $config['id'] = 'testelection';
@@ -87,6 +87,9 @@ $config['referendumThresholdPercent'] = 10;
 # Extra messages (as HTML), if any, which people will see on the front page before voting, and when they have voted
 $config['frontPageMessageHtml'] = false;
 $config['afterVoteMessageHtml'] = false;
+
+# Whether to disable the list of usernames who voted that appears on the show votes page afterwards (the default increases voter assurance but at expense of some privacy)
+$config['disableListWhoVoted'] = false;
 
 # Whether the administrator can access certain admin pages during the election
 $config['adminDuringElectionOK'] = false;
@@ -166,8 +169,8 @@ $config['countingMethod'] = 'ERS97STV';
 
 
 # The database table should contain these fields, in addition to id as above:
-# title,urlMoreInfo,emailReturningOfficer,emailTech,officialsUsernames,ballotStart,ballotEnd,ballotViewable,randomisationInfo,referendumThresholdPercent,frontPageMessageHtml,afterVoteMessageHtml,adminDuringElectionOK,organisationName,organisationUrl,organisationLogoUrl,headerLocation,footerLocation,electionInfo
-# However, urlMoreInfo,referendumThresholdPercent,frontPageMessageHtml,afterVoteMessageHtml,adminDuringElectionOK,headerLocation,footerLocation are optional fields which need not be created
+# title,urlMoreInfo,emailReturningOfficer,emailTech,officialsUsernames,ballotStart,ballotEnd,ballotViewable,randomisationInfo,referendumThresholdPercent,frontPageMessageHtml,afterVoteMessageHtml,disableListWhoVoted,adminDuringElectionOK,organisationName,organisationUrl,organisationLogoUrl,headerLocation,footerLocation,electionInfo
+# However, urlMoreInfo,referendumThresholdPercent,frontPageMessageHtml,afterVoteMessageHtml,disableListWhoVoted,adminDuringElectionOK,headerLocation,footerLocation are optional fields which need not be created
 
 
 ## End of config; now run the system ##
@@ -180,6 +183,7 @@ new BOB ($config);
  *	
 	E.g. to create the instances table, use the following.
 	Note that, in a managed GUI voting scenario, the items commented out with -- may be wanted. They are not needed by BOB itself.
+	There are other fields, e.g. adminDuringElectionOK,headerLocation,footerLocationdisableListWhoVoted are best set as a global config file option.
 
 CREATE TABLE IF NOT EXISTS `instances` (
    `id` varchar(255) collate utf8_unicode_ci NOT NULL COMMENT 'Generated globally-unique ID',
@@ -428,6 +432,7 @@ class BOB
 		'ballotViewable'				=> NULL,
 		'frontPageMessageHtml'			=> false,
 		'afterVoteMessageHtml'			=> false,
+		'disableListWhoVoted'			=> false,
 		'organisationName'				=> false,
 		'organisationUrl'				=> false,
 		'organisationLogoUrl'			=> false,
@@ -2721,12 +2726,21 @@ r.generateReport()
 	// print out the voters that have voted
 	private function listvoters ($perLine = 10)
 	{
+		# Re-check
+		if (!$this->afterBallotView) {return false;}	// This check is extraneous as this function wouldn't have been called otherwise
+		
 		# Give the main data required for verification
 		echo "\n<p>Total number of voters on the roll is: <strong>" . number_format ($this->registeredVoters) . '</strong>.</p>';
 		echo "\n<p>Total number of votes cast" . ($this->splitElection ? ' electronically' : '') . ' was: <strong>' . number_format ($this->totalVoted) . '</strong>.</p>';
 		
-		# Re-check
-		if (!$this->afterBallotView) {return false;}	// This check is extraneous as this function wouldn't have been called otherwise
+		# State whether the user voted
+		echo "\n<p>" . ($this->userHasVoted ? 'You <strong>did</strong> vote.' : 'You <strong>did not</strong> vote.') . '</p>';
+		
+		# End here if the voter list has been disabled
+		if ($this->config['disableListWhoVoted']) {
+			echo "\n<p>For reasons of privacy, this system is configured not to show the list of those who voted, instead showing above - for assurance reasons - a statement whether you voted.</p>";
+			return false;
+		}
 		
 		# Prevent viewing the list if they are neither a voter or an official
 		if (!$this->userIsRegisteredVoter && !$this->userIsElectionOfficial) {
@@ -2739,6 +2753,7 @@ r.generateReport()
 		
 		if(!($result = mysql_query("SELECT username FROM `{$this->voterTable}` WHERE voted='1';"))) return($this->err("Vote list read failed."));
 		
+		#!# <pre> is generated still if no-one voted
 		echo "\n\n<pre>\n";
 		$count=1;
 		while($row = mysql_fetch_row($result)){
