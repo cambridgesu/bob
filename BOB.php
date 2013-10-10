@@ -15,7 +15,7 @@
  *
  * Token word list Copyright The Internet Society (1998).
  *
- * Version 1.0.10
+ * Version 1.0.11
  *
  * Copyright (C) authors as above
  * 
@@ -194,8 +194,8 @@ CREATE TABLE IF NOT EXISTS `instances` (
 -- `organisation` varchar(255) collate utf8_unicode_ci NOT NULL COMMENT 'Organisation name',
    `title` varchar(255) collate utf8_unicode_ci NOT NULL COMMENT 'Title of this ballot',
    `urlMoreInfo` varchar(255) collate utf8_unicode_ci default NULL COMMENT 'URL for more info about the ballot',
-   `frontPageMessageHtml` varchar(255) collate utf8_unicode_ci default NULL COMMENT 'Optional front-page message',
-   `afterVoteMessageHtml` varchar(255) collate utf8_unicode_ci default NULL COMMENT 'An extra message, if any, which people will see when they have voted',
+   `frontPageMessageHtml` text collate utf8_unicode_ci default NULL COMMENT 'Optional front-page message',
+   `afterVoteMessageHtml` text collate utf8_unicode_ci default NULL COMMENT 'An extra message, if any, which people will see when they have voted',
    `emailReturningOfficer` varchar(255) collate utf8_unicode_ci NOT NULL COMMENT 'E-mail address of Returning Officer / mailbox',
    `emailTech` varchar(255) collate utf8_unicode_ci NOT NULL COMMENT 'E-mail address of Technical Administrator',
    `officialsUsernames` varchar(255) collate utf8_unicode_ci NOT NULL COMMENT 'Usernames of Returning Officer + Sysadmins',
@@ -1639,7 +1639,7 @@ class BOB
 		$html  = "\n<p>Welcome to the online voting system for this ballot.</p>";
 		if ($this->config['frontPageMessageHtml'] && ($this->beforeElection || $this->duringElection)) {
 			$html .= "\n" . "<div class=\"warningbox\">";
-			$html .= "\n" . $this->config['frontPageMessageHtml'];
+			$html .= "\n" . $this->config['frontPageMessageHtml'];	// It is assumed that the process which generates this setting has already sanitised it for inappropriate HTML
 			$html .= "\n" . "</div>";
 		}
 		
@@ -2174,7 +2174,7 @@ class BOB
 	";
 	if ($this->config['afterVoteMessageHtml']) {
 		echo "\n" . "<div class=\"warningbox\">";
-		echo "\n" . $this->config['afterVoteMessageHtml'];
+		echo "\n" . $this->config['afterVoteMessageHtml'];	// It is assumed that the process which generates this setting has already sanitised it for inappropriate HTML
 		echo "\n" . "</div>";
 	}
 	echo "
