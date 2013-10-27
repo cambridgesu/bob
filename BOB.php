@@ -1011,6 +1011,7 @@ class BOB
 			ul.explanation {margin: 0; padding: 0;}
 			ul.explanation li {list-style: none; margin-left: 10px; padding-left: 10px;}
 			p.winner {color: #603; font-weight: bold; font-size: 1.2em; background-image: url(/images/icons/bullet_go.png); background-position: 5px 1px; background-repeat: no-repeat; padding-left: 28px;}
+			p.warning {color: red;}
 
 			div.graybox {border: 1px solid #ddd; padding: 10px 15px; margin: 0 10px 10px 0; background-color: #fcfcfc; overflow: hidden; /* overflow prevents floats not being enclosed - see http://gtwebdev.com/workshop/floats/enclosing-floats.php */}
 			div.graybox:hover {background-color: #fafafa; border-color: #aaa;}
@@ -2318,7 +2319,12 @@ EOF;
 		echo "\n<p>(You can repeat the result calculations yourself on a desktop computer, if you wish, using a program such as <a href=\"http://www.openstv.org/\" target=\"_blank\">OpenSTV</a> and using the BLT data on the <a href=\"./?showvotes#blt\">raw vote data</a> page.)</p>";
 		
 		# Get the data as raw ballots and formatted BLTs
-		list ($ballots, $blts) = $this->listVotesBlt ();
+		$votesBlt = $this->listVotesBlt ($errorMessageHtml);
+		if ($errorMessageHtml) {
+			echo $errorMessageHtml;
+			return false;
+		}
+		list ($ballots, $blts, $listing) = $votesBlt;
 		
 		# Count the data and show the results
 		$this->countBlt ($ballots, $blts);
@@ -2360,7 +2366,15 @@ EOF;
 		echo "\n<h2 id=\"voters\">List of voters</h2>";
 		$this->listVoters ();
 		echo "\n<h2 id=\"blt\">List of votes in BLT format</h2>";
-		$this->listVotesBlt (true);
+		echo "\n<p>Total number of votes cast" . ($this->splitElection ? ' electronically' : '') . ' was: <strong>' . number_format ($this->totalVoted) . '</strong>.</p>';
+		echo "<p>The following output is in BLT format used by the Electoral Reform Society. This can be read by programs such as <a href=\"http://www.openstv.org/\" target=\"_blank\">OpenSTV</a> which provide a counting facility.</p>\n<p>Copy and paste " . (count ($this->config['electionInfo']) == 1 ? 'the block' : 'each of the blocks') . " below into a new text file and save " . (count ($this->config['electionInfo']) == 1 ? 'it' : 'each one') . " as a .blt file,<br />e.g. \"{$this->config['id']}_1.blt\"" . (count ($this->config['electionInfo']) == 1 ? '' : ",  \"{$this->config['id']}_2.blt\" etc.") . ".</p>";
+		$votesBlt = $this->listVotesBlt ($errorMessageHtml);
+		if ($errorMessageHtml) {
+			echo $errorMessageHtml;
+		} else {
+			list ($ballots, $blts, $listing) = $votesBlt;
+			echo $listing;
+		}
 		echo "\n<h2 id=\"counts\">Counted results</h2>";
 		echo "\n<p>The <a href=\"./?results\">results page</a> shows the compiled counts.</p>";
 	}
@@ -2378,14 +2392,33 @@ EOF;
 		}
 		echo "</pre>\n";
 	}
-  
-  
+	
+	
 	// print out the votes that have been cast
 	private function listvotes ()
 	{
 		echo "\n(In the listing below, column v<em>X</em>p<em>Y</em> is the Yth preference for election X)</p>";
 		echo "\n<p>Total number of votes cast" . ($this->splitElection ? ' electronically' : '') . ' was: <strong>' . number_format ($this->totalVoted) . '</strong>.</p>';
 		
+		# Get the compiled vote data
+		$voteData = $this->getVoteData ($voteDataErrorMessageHtml);
+		if ($voteDataErrorMessageHtml) {
+			echo $voteDataErrorMessageHtml;
+			return false;
+		}
+		list ($castVotes, $fieldnames) = $voteData;
+		
+		# Show the list of votes
+		echo "\n<p>To view this data in a spreadsheet, paste it into a text file and save it as a .csv file,<br />e.g. \"{$this->config['id']}.csv\".</p>";
+		echo "\n<pre>\n";
+		echo $this->tokenVotesListHtml ($fieldnames, $castVotes);
+		echo '</pre>';
+	}
+	
+	
+	# Function to get the cast vote data
+	private function getVoteData (&$errorMessage = false)
+	{
 		# Get the votes, and order them by token so that it is easier for voters to find their token in an alphabetical list
 		if(!($result = mysql_query ("SELECT * FROM `{$this->votesTable}`;"))) return ($this->err("Vote list read failed."));
 		
@@ -2397,24 +2430,21 @@ EOF;
 		}
 		
 		# Create an array of the cast votes
-		$electronicVotes = array ();
+		$castVotes = array ();
 		while ($row = mysql_fetch_assoc ($result)) {
-			$token = array_shift ($row);
+			$token = array_shift ($row);	// Skip the token, but store it for use as an index
 			foreach ($row as $k => $v) {
-				$electronicVotes[$token][$k] = $v;
+				$castVotes[$token][$k] = $v;
 			}
 		}
 		
-		# Show the list of votes
-		echo "\n<p>To view this data in a spreadsheet, paste it into a text file and save it as a .csv file,<br />e.g. \"{$this->config['id']}.csv\".</p>";
-		echo "\n<pre>\n";
-		echo $this->showTokenVotesList ($fieldnames, $electronicVotes);
-		echo '</pre>';
+		# Return the data
+		return array ($castVotes, $fieldnames);
 	}
-	
-	
-	# Function to show a list of cast votes
-	private function showTokenVotesList ($fieldnames, $votes)
+  
+  
+	# Function to assemble HTML for a list of cast votes
+	private function tokenVotesListHtml ($fieldnames, $votes)
 	{
 		# Start the HTML
 		$html = '';
@@ -2441,14 +2471,8 @@ EOF;
 	
 	
 	# Show the votes that have been cast, in .blt format
-	private function listvotesBlt ($echo = false)
+	private function listVotesBlt (&$errorMessageHtml = '')
 	{
-		# Introduce this output
-		if ($echo) {
-			echo "\n<p>Total number of votes cast" . ($this->splitElection ? ' electronically' : '') . ' was: <strong>' . number_format ($this->totalVoted) . '</strong>.</p>';
-			echo "<p>The following output is in BLT format used by the Electoral Reform Society. This can be read by programs such as <a href=\"http://www.openstv.org/\" target=\"_blank\">OpenSTV</a> which provide a counting facility.</p>\n<p>Copy and paste " . (count ($this->config['electionInfo']) == 1 ? 'the block' : 'each of the blocks') . " below into a new text file and save " . (count ($this->config['electionInfo']) == 1 ? 'it' : 'each one') . " as a .blt file,<br />e.g. \"{$this->config['id']}_1.blt\"" . (count ($this->config['electionInfo']) == 1 ? '' : ",  \"{$this->config['id']}_2.blt\" etc.") . ".</p>";
-		}
-		
 		/*
 			http://www.openstv.org/manual explains the format as being as follows, but without the comments starting at #
 			It seems to be implied that an empty ballot (i.e. not voting for anyone) is simply skipped, in the BLT format
@@ -2473,21 +2497,21 @@ EOF;
 			"Gardening Club Election" # title
 		 */
 		
-		# Get the votes
-		if(!($result = mysql_query("SELECT * FROM `{$this->votesTable}`;"))) return($this->err("Vote list read failed."));
+		# Get the compiled vote data
+		$voteData = $this->getVoteData ($voteDataErrorMessageHtml);
+		if ($voteDataErrorMessageHtml) {
+			$errorMessageHtml = $voteDataErrorMessageHtml;
+			return false;
+		}
+		list ($castVotes, $fieldnames) = $voteData;
 		
-		# Loop through each ballot
+		# Match the vote and position to create an easily-loopable structure
 		$ballots = array ();
-		while ($row = mysql_fetch_assoc ($result)) {
-			$token = array_shift ($row);	// Skip the token, but store it for use as an index
-			
-			# Match the vote and position
+		foreach ($castVotes as $token => $row) {
 			foreach ($row as $slot => $choice) {
 				preg_match ('/v([0-9]+)p([0-9]+)/', $slot, $matches);
 				$election = $matches[1];
 				$position = $matches[2];
-				
-				# Store this result in an easily-loopable structure
 				$ballots[$election][$token][$position] = $choice;
 			}
 		}
@@ -2553,13 +2577,8 @@ EOF;
 		}
 		$listing .= "\n</table>";
 		
-		# Show the listing
-		if ($echo) {
-			echo $listing;
-		}
-		
 		# Return the BLT listings
-		return array ($ballots, $blts);
+		return array ($ballots, $blts, $listing);
 	}
 	
 	
