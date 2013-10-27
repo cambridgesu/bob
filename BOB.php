@@ -15,7 +15,7 @@
  *
  * Token word list Copyright The Internet Society (1998).
  *
- * Version 1.0.11
+ * Version 1.0.12
  *
  * Copyright (C) authors as above
  * 
@@ -1011,6 +1011,36 @@ class BOB
 			ul.explanation {margin: 0; padding: 0;}
 			ul.explanation li {list-style: none; margin-left: 10px; padding-left: 10px;}
 			p.winner {color: #603; font-weight: bold; font-size: 1.2em; background-image: url(/images/icons/bullet_go.png); background-position: 5px 1px; background-repeat: no-repeat; padding-left: 28px;}
+
+			div.graybox {border: 1px solid #ddd; padding: 10px 15px; margin: 0 10px 10px 0; background-color: #fcfcfc; overflow: hidden; /* overflow prevents floats not being enclosed - see http://gtwebdev.com/workshop/floats/enclosing-floats.php */}
+			div.graybox:hover {background-color: #fafafa; border-color: #aaa;}
+			div.graybox p {text-align: left; margin-top: 10px;}
+
+			ul.actions {margin: 0; padding: 0; float: right; display: block; margin-left: 10px;}
+			ul.actions li {list-style: none; margin-bottom: 1px;}
+			ul.actions li a {border-bottom: 0; border: 1px solid #ddd; padding: 4px 8px 2px; -moz-border-radius: 4px; -webkit-border-radius: 4px; width: 185px;}
+			ul.actions li a {display: block;}
+			ul.actions li a:hover {border-color: #aaa;}
+			ul.actions li a img {vertical-align: top; width: 16px; height: 16px; border: 0;}
+			ul.actions li a {border-bottom: 0; border: 1px solid #ddd; padding: 4px 8px 2px; -moz-border-radius: 4px; width: 185px;}
+			ul.actions li a {display: block;}
+			ul.actions.left {float: none;}
+			
+			ul.actions {margin-bottom: 1.2em;}
+			ul.actions li {margin-bottom: 7px;}
+			p.electoralroll, ul.actions li a, p.winner {background-repeat: no-repeat; background-position: 6px 5px; padding-left: 28px;}
+			ul.actions li a {font-weight: bold;}
+			p.electoralroll {background-image: url(/images/icons/script.png);}
+			ul.actions li a {width: 15em;}
+			ul.actions li.vote a {background-image: url(/images/icons/pencil.png);}
+			ul.actions li.showvotes a {background-image: url(/images/icons/application_view_list.png);}
+			ul.actions li a:hover {background-color: #e8c8c8;}
+			ul.actions li a img {margin-right: 2px;}
+			
+			table.lines {border-collapse: collapse; /* width: 95%; */}
+			.lines td, .lines th {border-bottom: 1px solid #e9e9e9; padding: 6px 4px 2px; vertical-align: top; text-align: left;}
+			.lines tr:first-child {border-top: 1px solid #e9e9e9;}
+
 			table.lines td.comment {padding-bottom: 1.25em;}
 			table.regulated td.key p {width: 150px;}
 			@media print {
