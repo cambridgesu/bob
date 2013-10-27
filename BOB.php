@@ -2355,7 +2355,7 @@ EOF;
 		echo "\n<h2 id=\"key\">Key to vote data</h2>";
 		echo "\n<p>Vote tokens and the votes they are recorded with are listed here.</p>";
 		$this->voteDataKey ();
-		echo "\n<h2 id=\"votes\">List of votes (column vXpY is the Yth preference for election X)</h2>";
+		echo "\n<h2 id=\"votes\">List of votes cast</h2>";
 		$this->listVotes ();
 		echo "\n<h2 id=\"voters\">List of voters</h2>";
 		$this->listVoters ();
@@ -2366,44 +2366,48 @@ EOF;
 	}
 	
 	
-  // explain the candidate <-> numerical identifier relationship
-  private function voteDataKey(){
-    echo "<pre>\n";
-    foreach( $this->config['electionInfo'] as $c => $pos){
-      echo "v".(1+$c)." is the election for position: ".array_shift($pos)."\n";
-      foreach( $pos as $p => $name){
-	echo "   candidate number ".(1+$p)." is $name\n";	
-      }
-    }
-    echo "</pre>\n";
-    //$this->config['electionInfo'][$matches[1]-1][0];
-  }
+	// explain the candidate <-> numerical identifier relationship
+	private function voteDataKey ()
+	{
+		echo "\n<pre>\n";
+		foreach ($this->config['electionInfo'] as $c => $pos) {
+			echo 'v' . (1 + $c) . ' is the election for position: ' . htmlspecialchars (array_shift ($pos)) . "\n";
+			foreach ($pos as $p => $name) {
+				echo '   candidate number ' . (1 + $p) . ' is ' . htmlspecialchars ($name) . "\n";
+			}
+		}
+		echo "</pre>\n";
+	}
   
   
-  // print out the votes that have been cast
-  private function listvotes(){
-	echo "\n<p>Total number of votes cast" . ($this->splitElection ? ' electronically' : '') . ' was: <strong>' . number_format ($this->totalVoted) . '</strong>.</p>';
-	# Get the votes, and order them by token so that it is easier for voters to find their token in an alphabetical list
-    if(!($result = mysql_query("SELECT * FROM `{$this->votesTable}`;"))) return($this->err("Vote list read failed."));
-
-    echo "<p>To view this data in a spreadsheet, paste it into a text file and save it as a .csv file,<br />e.g. \"{$this->config['id']}.csv\".</p>";
-    echo "<pre>\n";
-    printf("%22s",mysql_field_name($result,0));    
-    for($count=1; $count<mysql_num_fields($result); $count++){
-      printf(",%5s",mysql_field_name($result,$count));
-    }
-    echo "\n";
-    $count=0;
-    while($row = mysql_fetch_row($result)){
-      printf("%22s",array_shift($row));
-      foreach ($row as $k => $v){
-	printf(",%5d",$v);
-      }
-      $count++;
-      echo "\n";
-    }
-    echo "</pre>";
-  }
+	// print out the votes that have been cast
+	private function listvotes ()
+	{
+		echo "\n(In the listing below, column v<em>X</em>p<em>Y</em> is the Yth preference for election X)</p>";
+		echo "\n<p>Total number of votes cast" . ($this->splitElection ? ' electronically' : '') . ' was: <strong>' . number_format ($this->totalVoted) . '</strong>.</p>';
+		# Get the votes, and order them by token so that it is easier for voters to find their token in an alphabetical list
+	
+		if(!($result = mysql_query ("SELECT * FROM `{$this->votesTable}`;"))) return ($this->err("Vote list read failed."));
+		
+		echo "\n<p>To view this data in a spreadsheet, paste it into a text file and save it as a .csv file,<br />e.g. \"{$this->config['id']}.csv\".</p>";
+		echo "\n<pre>\n";
+		printf ('%22s', mysql_field_name ($result, 0));    
+		$fields = mysql_num_fields ($result);
+		for ($count=1; $count < $fields; $count++) {
+			printf (',%5s', mysql_field_name ($result,$count));
+		}
+		echo "\n";
+		$count = 0;
+		while ($row = mysql_fetch_row ($result)) {
+			printf ('%22s', array_shift ($row));
+			foreach ($row as $k => $v) {
+				printf (',%5d', $v);
+			}
+			$count++;
+			echo "\n";
+		}
+		echo '</pre>';
+	}
   
   
 	# Show the votes that have been cast, in .blt format
