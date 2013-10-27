@@ -9,7 +9,7 @@
  * Significant contributions (but almost certainly not responsible for any nasty code) :
  * David Turner, Simon Hopkins, Robert Whittaker
  *
- * Requires : index.php as a bootstrap file; see installation below
+ * Requires : index.php as a bootstrap file; see installation notes below
  * Requires : Container-managed authentication
  * Uses     : MySQL
  *
@@ -183,7 +183,7 @@ new BOB ($config);
  *	
 	E.g. to create the instances table, use the following.
 	Note that, in a managed GUI voting scenario, the items commented out with -- may be wanted. They are not needed by BOB itself.
-	There are other fields, e.g. adminDuringElectionOK,headerLocation,footerLocationdisableListWhoVoted are best set as a global config file option.
+	There are other fields, e.g. adminDuringElectionOK,headerLocation,footerLocation,disableListWhoVoted are best set as a global config file option.
 
 CREATE TABLE IF NOT EXISTS `instances` (
    `id` varchar(255) collate utf8_unicode_ci NOT NULL COMMENT 'Generated globally-unique ID',
@@ -2385,31 +2385,61 @@ EOF;
 	{
 		echo "\n(In the listing below, column v<em>X</em>p<em>Y</em> is the Yth preference for election X)</p>";
 		echo "\n<p>Total number of votes cast" . ($this->splitElection ? ' electronically' : '') . ' was: <strong>' . number_format ($this->totalVoted) . '</strong>.</p>';
+		
 		# Get the votes, and order them by token so that it is easier for voters to find their token in an alphabetical list
-	
 		if(!($result = mysql_query ("SELECT * FROM `{$this->votesTable}`;"))) return ($this->err("Vote list read failed."));
 		
+		# Create an array of the fieldnames
+		$fieldnames = array ();
+		$fields = mysql_num_fields ($result);
+		for ($count = 0; $count < $fields; $count++) {
+			$fieldnames[] = mysql_field_name ($result, $count);
+		}
+		
+		# Create an array of the cast votes
+		$electronicVotes = array ();
+		while ($row = mysql_fetch_assoc ($result)) {
+			$token = array_shift ($row);
+			foreach ($row as $k => $v) {
+				$electronicVotes[$token][$k] = $v;
+			}
+		}
+		
+		# Show the list of votes
 		echo "\n<p>To view this data in a spreadsheet, paste it into a text file and save it as a .csv file,<br />e.g. \"{$this->config['id']}.csv\".</p>";
 		echo "\n<pre>\n";
-		printf ('%22s', mysql_field_name ($result, 0));    
-		$fields = mysql_num_fields ($result);
-		for ($count=1; $count < $fields; $count++) {
-			printf (',%5s', mysql_field_name ($result,$count));
-		}
-		echo "\n";
-		$count = 0;
-		while ($row = mysql_fetch_row ($result)) {
-			printf ('%22s', array_shift ($row));
-			foreach ($row as $k => $v) {
-				printf (',%5d', $v);
-			}
-			$count++;
-			echo "\n";
-		}
+		echo $this->showTokenVotesList ($fieldnames, $electronicVotes);
 		echo '</pre>';
 	}
-  
-  
+	
+	
+	# Function to show a list of cast votes
+	private function showTokenVotesList ($fieldnames, $votes)
+	{
+		# Start the HTML
+		$html = '';
+		
+		# Start with the header row
+		$html .= sprintf ('%22s', array_shift ($fieldnames));
+		foreach ($fieldnames as $fieldname) {
+			$html .= sprintf (',%5s', $fieldname);
+		}
+		$html .= "\n";
+		
+		# Add the cast votes
+		foreach ($votes as $token => $row) {
+			$html .= sprintf ('%22s', $token);
+			foreach ($row as $k => $v) {
+				$html .= sprintf (',%5d', $v);
+			}
+			$html .= "\n";
+		}
+		
+		# Return the HTML
+		return $html;
+	}
+	
+	
 	# Show the votes that have been cast, in .blt format
 	private function listvotesBlt ($echo = false)
 	{
