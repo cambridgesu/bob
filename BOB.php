@@ -15,7 +15,7 @@
  *
  * Token word list Copyright The Internet Society (1998).
  *
- * Version 1.0.12
+ * Version 1.1.0
  *
  * Copyright (C) authors as above
  * 
@@ -47,7 +47,7 @@
 <?php
 
 ## Config file for BOB ##
-## All settings must be specified, except for these (which will revert to internal defaults if omitted): dbHostname,countingInstallation,countingMethod,urlMoreInfo,adminDuringElectionOK,randomisationInfo,referendumThresholdPercent,frontPageMessageHtml,afterVoteMessageHtml,disableListWhoVoted,organisationName,organisationUrl,organisationLogoUrl,headerLocation,footerLocation
+## All settings must be specified, except for these (which will revert to internal defaults if omitted): dbHostname,countingInstallation,countingMethod,urlMoreInfo,adminDuringElectionOK,randomisationInfo,referendumThresholdPercent,frontPageMessageHtml,afterVoteMessageHtml,disableListWhoVoted,organisationName,organisationUrl,organisationLogoUrl,headerLocation,footerLocation,additionalVotesCsvDirectory
 
 # Unique identifier for this ballot
 $config['id'] = 'testelection';
@@ -102,6 +102,9 @@ $config['organisationLogoUrl'] = 'https://www.example.com/somelogo.png';	// Will
 # Location in the URL space of optional header and footer file; must start with /
 $config['headerLocation'] = '/style/header.html';
 $config['footerLocation'] = '/style/footer.html';
+
+# Directory where additional votes cast on paper transcribed into a CSV file are stored; must have filename <id>.draft.csv (for testing of the result) and <id>.final.csv (which is made public)
+$config['additionalVotesCsvDirectory'] = false;
 
 # Number of posts being elected; each position and the candidate names; each block separated by one line break
 # If any contain accented/etc. characters, ensure this file is saved as UTF-8 without a Byte Order Mark (BOM)
@@ -169,8 +172,8 @@ $config['countingMethod'] = 'ERS97STV';
 
 
 # The database table should contain these fields, in addition to id as above:
-# title,urlMoreInfo,emailReturningOfficer,emailTech,officialsUsernames,ballotStart,ballotEnd,ballotViewable,randomisationInfo,referendumThresholdPercent,frontPageMessageHtml,afterVoteMessageHtml,disableListWhoVoted,adminDuringElectionOK,organisationName,organisationUrl,organisationLogoUrl,headerLocation,footerLocation,electionInfo
-# However, urlMoreInfo,referendumThresholdPercent,frontPageMessageHtml,afterVoteMessageHtml,disableListWhoVoted,adminDuringElectionOK,headerLocation,footerLocation are optional fields which need not be created
+# title,urlMoreInfo,emailReturningOfficer,emailTech,officialsUsernames,ballotStart,ballotEnd,ballotViewable,randomisationInfo,referendumThresholdPercent,frontPageMessageHtml,afterVoteMessageHtml,disableListWhoVoted,adminDuringElectionOK,organisationName,organisationUrl,organisationLogoUrl,headerLocation,footerLocation,additionalVotesCsvDirectory,electionInfo
+# However, urlMoreInfo,referendumThresholdPercent,frontPageMessageHtml,afterVoteMessageHtml,disableListWhoVoted,adminDuringElectionOK,headerLocation,footerLocation,additionalVotesCsvDirectory are optional fields which need not be created
 
 
 ## End of config; now run the system ##
@@ -183,7 +186,7 @@ new BOB ($config);
  *	
 	E.g. to create the instances table, use the following.
 	Note that, in a managed GUI voting scenario, the items commented out with -- may be wanted. They are not needed by BOB itself.
-	There are other fields, e.g. adminDuringElectionOK,headerLocation,footerLocation,disableListWhoVoted are best set as a global config file option.
+	There are other fields, e.g. adminDuringElectionOK,headerLocation,additionalVotesCsvDirectory,footerLocation,disableListWhoVoted are best set as a global config file option.
 
 CREATE TABLE IF NOT EXISTS `instances` (
    `id` varchar(255) collate utf8_unicode_ci NOT NULL COMMENT 'Generated globally-unique ID',
@@ -438,6 +441,7 @@ class BOB
 		'organisationLogoUrl'			=> false,
 		'headerLocation'				=> false,
 		'footerLocation'				=> false,
+		'additionalVotesCsvDirectory'			=> false,
 		'electionInfo'					=> NULL,
 	);
 	
@@ -524,6 +528,8 @@ class BOB
 	private $bobMd5;						// MD5 of the BOB program (this file)
 	private $configMd5;						// MD5 of the config being used
 	private $convertTo_CandidateToNumber = true;	// In the admin ballot printing mode, whether to convert to candidate=>number format
+	private $additionalVotesFile = false;		// Additional votes file - filename in use (if any)
+	private $additionalVotesFileFinal = false;	// Additional votes file - whether the data is finalised
 	
 	# Define what a referendum looks like in terms of the available candidates
 	private $referendumCandidates = array ('0' => '(blank)', '1' => 'Yes', '2' => 'No');
@@ -647,6 +653,12 @@ class BOB
 		# Set whether this is a split election (online and paper)
 		$this->splitElection = $this->splitElection ();
 		
+		# Ensure correct setup of any CSV file(s) for additional votes transcribed from paper
+		if (!$this->additionalVotesSetupOk ()) {
+			$this->showErrors ();
+			return false;
+		}
+		
 		# Validate and set the action
 		$defaultAction = 'home';
 		$requestedAction = (strlen ($_SERVER['QUERY_STRING']) ? $_SERVER['QUERY_STRING'] : $defaultAction);
@@ -715,6 +727,7 @@ class BOB
 		# Blank out the password field; and fields containing machine paths
 		$config['dbPassword'] = '[...]';
 		$config['countingInstallation'] = '[...]';
+		$config['additionalVotesCsvDirectory'] = '[...]';
 		
 		# Build the HTML
 		$html  = "\n\n<!-- This is the config {$sourceDescription}, with entity conversion added:\n\n";
@@ -1610,14 +1623,15 @@ class BOB
 	}
 	
 	
-	# Function to determine whether whether we are after the election has closed
+	# Function to determine whether whether we are after the election has closed electronically
+	#!# This should be renamed to "afterElectronicVoting" for clarity
 	private function afterElection ()
 	{
 		return ($this->config['ballotEnd'] < $this->loadtime);
 	}
 	
 	
-	# Function to determine whether we are after the point when the ballot is viewable
+	# Function to determine whether have reached the point when the ballot is viewable
 	private function afterBallotView ()
 	{
 		return ($this->config['ballotViewable'] < $this->loadtime);
@@ -2300,11 +2314,40 @@ EOF;
 			return false;
 		}
 		
-		# Disallow counting for a split election
+		# For a split (electronic and paper) election, check and show status on automatic vote counting
 		if ($this->splitElection) {
-			echo "\n<p>Results cannot be displayed automatically, as this election involves a paper vote after the online vote has closed.</p>";
-			echo "\n<p>Results can be calculated on a desktop computer using a program such as <a href=\"http://www.openstv.org/\" target=\"_blank\">OpenSTV</a> and using the BLT data on the <a href=\"./?showvotes#blt\">raw vote data</a> page.</p>";
-			return false;
+			
+			# If the additional votes functionality is not enabled, then results can never be displayed automatically
+			if (!$this->config['additionalVotesCsvDirectory']) {
+				echo "\n<p>Results cannot be displayed automatically, as this election involves a paper vote after the online vote has closed.</p>";
+				echo "\n<p>Results can be calculated on a desktop computer using a program such as <a href=\"http://www.openstv.org/\" target=\"_blank\">OpenSTV</a> and using the BLT data on the <a href=\"./?showvotes#blt\">raw vote data</a> page.</p>";
+				return false;
+			}
+			
+			# Since the additional votes functionality is now confirmed enabled, tell the user if the Returning Officer has not added it yet
+			if (!$this->additionalVotesFile) {
+				echo "\n<p>This election is being conducted using paper votes also.</p>";
+				echo "\n<p>The Returning Officer has the option to add the paper votes into this system, though this has not been done as yet. Therefore, results cannot at present be displayed automatically.</p>";
+				echo "\n<p>Please check back here later, or look out for an announcement.</p>";
+				return false;
+			}
+			
+			# Since an additional votes file is currently present, if it is only a draft, tell the user
+			if (!$this->additionalVotesFileFinal) {
+				
+				# If they are a Returning Officer, then make clear the results below are private to them only
+				if ($this->userIsElectionOfficial) {
+					echo "\n<div class=\"graybox\">";
+					echo "\n\t<p>The results below are only in <strong>draft</strong> and are <strong>visible only to you as a Returning Officer</strong>.</p>";
+					echo "\n\t<p>Please check below and then upload a finalised version.</p>";
+					echo "\n</div>";
+				} else {
+					echo "\n<p>This election is being conducted using paper votes also.</p>";
+					echo "\n<p>The Returning Officer has not yet added finalised paper result data into this system. Therefore, results cannot at present be displayed automatically.</p>";
+					echo "\n<p>Please check back here later, or look out for an announcement.</p>";
+					return false;
+				}
+			}
 		}
 		
 		# Disable if no counting installation set
@@ -2315,7 +2358,7 @@ EOF;
 		}
 		
 		# Explain this page
-		echo "\n<p>This page shows the election results.<br />This has been calculated by taking the <a href=\"./?showvotes#blt\">raw vote data</a>, which you can view.</p>";
+		echo "\n<p>This page shows the election results.<br />This has been calculated by taking the <a href=\"./?showvotes#votes\">raw vote data</a> in <a href=\"./?showvotes#blt\">.BLT format</a>, which you can view.</p>";
 		echo "\n<p>(You can repeat the result calculations yourself on a desktop computer, if you wish, using a program such as <a href=\"http://www.openstv.org/\" target=\"_blank\">OpenSTV</a> and using the BLT data on the <a href=\"./?showvotes#blt\">raw vote data</a> page.)</p>";
 		
 		# Get the data as raw ballots and formatted BLTs
@@ -2406,9 +2449,12 @@ EOF;
 			echo $voteDataErrorMessageHtml;
 			return false;
 		}
-		list ($castVotes, $fieldnames) = $voteData;
+		list ($castVotes, $fieldnames, $totalAdditionalVotes) = $voteData;
 		
 		# Show the list of votes
+		if ($totalAdditionalVotes) {
+			echo "\n<p>The listing below also includes <strong>" . ($totalAdditionalVotes == 1 ? 'one additional vote' : "{$totalAdditionalVotes} additional votes") . "</strong> supplied by the Returning Officer by loading a CSV file of the additional data. " . ($totalAdditionalVotes == 1 ? 'This is' : 'These are') . " clearly labelled as such at the end of the listing.</p>";
+		}
 		echo "\n<p>To view this data in a spreadsheet, paste it into a text file and save it as a .csv file,<br />e.g. \"{$this->config['id']}.csv\".</p>";
 		echo "\n<pre>\n";
 		echo $this->tokenVotesListHtml ($fieldnames, $castVotes);
@@ -2438,8 +2484,21 @@ EOF;
 			}
 		}
 		
-		# Return the data
-		return array ($castVotes, $fieldnames);
+		# Get the additional votes, if configured
+		$additionalVotes = $this->additionalVotes ($fieldnames, $additionalVotesErrorMessage);
+		if ($additionalVotesErrorMessage) {
+			$errorMessage = "\n<p class=\"warning\">The data cannot yet be shown as the Returning Officer has supplied a CSV of additional data, but the following problem was found:<br /><em>" . htmlspecialchars ($additionalVotesErrorMessage) . "</em></p>";
+			return false;
+		}
+		$totalAdditionalVotes = count ($additionalVotes);
+		
+		# Combine the votes if additional votes are present
+		if ($additionalVotes) {
+			$castVotes += $additionalVotes;
+		}
+		
+		# Return the data as a collection
+		return array ($castVotes, $fieldnames, $totalAdditionalVotes);
 	}
   
   
@@ -2467,6 +2526,140 @@ EOF;
 		
 		# Return the HTML
 		return $html;
+	}
+	
+	
+	# Function to check setup of any CSV file(s) for additional votes transcribed from paper
+	private function additionalVotesSetupOk ()
+	{
+		# Return no problems if functionality not enabled
+		if (!$this->config['additionalVotesCsvDirectory']) {return true;}
+		
+		# Return no problems if not relevant to the current phase
+		if (!$this->afterBallotView) {return true;}
+		
+		# Check the directory is present and readable
+		if (!is_dir ($this->config['additionalVotesCsvDirectory'])) {
+			$this->errors[] = 'The specified directory for additional votes cast on paper does not exist.';
+			return false;
+		}
+		if (!is_readable ($this->config['additionalVotesCsvDirectory'])) {
+			$this->errors[] = 'The specified directory for additional votes cast on paper is not readable.';
+			return false;
+		}
+		
+		# Check for each file, i.e. /path/to/<id>.draft.csv and /path/to/<id>.final.csv
+		$files = array ('draft' => false, 'final' => true);	// Final takes priority if both are present
+		$additionalVotesFile = false;
+		$isFinal = false;
+		foreach ($files as $type => $finality) {
+			$filename = $this->config['additionalVotesCsvDirectory'] . '/' . $this->config['id'] . '.' . $type . '.csv';
+			if (is_file ($filename)) {
+				if (!is_readable ($filename)) {
+					$this->errors[] = 'A file for additional votes cast on paper has been found but is not readable.';
+					return false;
+				}
+				$additionalVotesFile = $filename;
+				$isFinal = $finality;
+			}
+		}
+		
+		# Register the values as class properties
+		$this->additionalVotesFile = $additionalVotesFile;
+		$this->additionalVotesFileFinal = $isFinal;
+		
+		# Confirm success
+		return true;
+	}
+	
+	
+	# Function to retrieve any additional votes cast on paper transcribed into a CSV file
+	private function additionalVotes ($fieldnames, &$errorMessage = false)
+	{
+		# End, returning no results, if no file is present
+		if (!$this->additionalVotesFile) {return array ();}	// Not an error condition - there may not be a file yet
+		
+		# Read the file
+		$contents = file_get_contents ($this->additionalVotesFile);
+		
+		# Convert CSV to array
+		$serialKeyPrefixRequired = 'additionalvote';	// Prefix for key names which must exist in serial from 1 without gaps (i.e. additionalvote1,additionalvote2,...); this also provides a namespace to avoid clashes with the standard token list, so that merging is safe
+		$data = $this->csvToArray ($contents, $fieldnames, $serialKeyPrefixRequired, $csvErrorMessage);
+		if ($csvErrorMessage) {
+			$errorMessage = $csvErrorMessage;
+			return array ();	// Return no results
+		}
+		
+		# Return the array
+		return $data;
+	}
+	
+	
+	# Helper function to process a CSV string to an associative array
+	private function csvToArray ($string, $expectedHeaders, $serialKeyPrefixRequired = false, &$errorMessage = '')
+	{
+		# Start an array of data to fill
+		$data = array ();
+		
+		# Split by newline
+		$string = str_replace ("\r\n", "\n", trim ($string));	// Normalise to \n
+		$lines = explode ("\n", $string);
+		
+		# For each line, create an array of cells
+		foreach ($lines as $rowNumber => $line) {
+			
+			# Create the cells
+			$cells = explode (',', $line);
+			
+			# Create the header row
+			if ($rowNumber == 0) {
+				$headers = $cells;
+				if ($headers !== $expectedHeaders) {
+					$errorMessage = 'The header row in the CSV file does not match the expected structure, so the data cannot be used.';
+					return false;
+				}
+				$totalHeaders = count ($headers);
+				continue;
+			}
+			
+			# Return false if any row has more/less cells than headers
+			if (count ($cells) != $totalHeaders) {
+				$errorMessage = "Row " . ($rowNumber + 1) . " does not contain the right number of cells, so the data is faulty. Please check you have supplied enough header titles in the first row.";	// Show row number as human number, not zero-indexed
+				return false;
+			}
+			
+			# Determine the ID of this row, and ensure it is unique
+			$rowId = $cells[0];
+			if (array_key_exists ($rowId, $data)) {
+				$errorMessage = 'The row IDs are not unique.';
+				return false;
+			}
+			
+			# If required, check the key matches a specified pattern
+			if ($serialKeyPrefixRequired) {
+				$expectedKey = $serialKeyPrefixRequired . $rowNumber;
+				if ($rowId != $expectedKey) {
+					$errorMessage = 'The row IDs must all match the specified pattern and exist in order without gaps.';
+					return false;
+				}
+			}
+			
+			# Allocate each row, with the index starting from 0
+			foreach ($cells as $index => $cell) {
+				
+				# Skip first column, since it is the key
+				if ($index == 0) {continue;}
+				
+				# Determine the fieldname
+				$fieldname = $headers[$index];
+				
+				# Allocate the cell into the final data
+				$data[$rowId][$fieldname] = $cell;
+			}
+		}
+		
+		# Return the data
+		return $data;
 	}
 	
 	
@@ -2503,7 +2696,7 @@ EOF;
 			$errorMessageHtml = $voteDataErrorMessageHtml;
 			return false;
 		}
-		list ($castVotes, $fieldnames) = $voteData;
+		list ($castVotes, $fieldnames, $totalAdditionalVotes) = $voteData;
 		
 		# Match the vote and position to create an easily-loopable structure
 		$ballots = array ();
@@ -2577,7 +2770,8 @@ EOF;
 		}
 		$listing .= "\n</table>";
 		
-		# Return the BLT listings
+		# Return the BLT listings as a collection
+		#!# Need to refactor so that the listing generation is a separate function that uses the arranged data
 		return array ($ballots, $blts, $listing);
 	}
 	

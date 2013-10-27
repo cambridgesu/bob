@@ -1,7 +1,7 @@
 <?php
 
 ## Config file for BOB ##
-## All settings must be specified, except for these (which will revert to internal defaults if omitted): dbHostname,countingInstallation,countingMethod,urlMoreInfo,adminDuringElectionOK,randomisationInfo,frontPageMessageHtml,afterVoteMessageHtml,disableListWhoVoted,organisationName,organisationUrl,organisationLogoUrl,headerLocation,footerLocation
+## All settings must be specified, except for these (which will revert to internal defaults if omitted): dbHostname,countingInstallation,countingMethod,urlMoreInfo,adminDuringElectionOK,randomisationInfo,frontPageMessageHtml,afterVoteMessageHtml,disableListWhoVoted,organisationName,organisationUrl,organisationLogoUrl,headerLocation,footerLocation,additionalVotesCsvDirectory
 
 # Unique identifier for this ballot
 $config['id'] = 'testelection';
@@ -56,6 +56,9 @@ $config['organisationLogoUrl'] = 'https://www.example.com/somelogo.png';	// Will
 # Location in the URL space of optional header and footer file; must start with /
 $config['headerLocation'] = '/style/header.html';
 $config['footerLocation'] = '/style/footer.html';
+
+# Directory where additional votes cast on paper transcribed into a CSV file are stored; must have filename <id>.draft.csv (for testing of the result) and <id>.final.csv (which is made public)
+$config['additionalVotesCsvDirectory'] = false;
 
 # Number of posts being elected; each position and the candidate names; each block separated by one line break
 # If any contain accented/etc. characters, ensure this file is saved as UTF-8 without a Byte Order Mark (BOM)
