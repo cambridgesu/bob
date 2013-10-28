@@ -528,6 +528,7 @@ class BOB
 	private $bobMd5;						// MD5 of the BOB program (this file)
 	private $configMd5;						// MD5 of the config being used
 	private $convertTo_CandidateToNumber = true;	// In the admin ballot printing mode, whether to convert to candidate=>number format
+	private $additionalVotePrefix = 'additionalvote';	// Prefix for additional votes
 	private $additionalVotesFile = false;		// Additional votes file - filename in use (if any)
 	private $additionalVotesFileFinal = false;	// Additional votes file - whether the data is finalised
 	
@@ -2517,7 +2518,7 @@ EOF;
 	private function tokenVotesListHtml ($fieldnames, $votes)
 	{
 		# Start the HTML
-		$html = '';
+		$html  = '';
 		
 		# Start with the header row
 		$html .= sprintf ('%22s', array_shift ($fieldnames));
@@ -2594,7 +2595,7 @@ EOF;
 		$contents = file_get_contents ($this->additionalVotesFile);
 		
 		# Convert CSV to array
-		$serialKeyPrefixRequired = 'additionalvote';	// Prefix for key names which must exist in serial from 1 without gaps (i.e. additionalvote1,additionalvote2,...); this also provides a namespace to avoid clashes with the standard token list, so that merging is safe
+		$serialKeyPrefixRequired = $this->additionalVotePrefix;		// Prefix for key names which must exist in serial from 1 without gaps (i.e. additionalvote1,additionalvote2,...); this also provides a namespace to avoid clashes with the standard token list, so that merging is safe
 		$data = $this->csvToArray ($contents, $fieldnames, $serialKeyPrefixRequired, $csvErrorMessage);
 		if ($csvErrorMessage) {
 			$errorMessage = $csvErrorMessage;
