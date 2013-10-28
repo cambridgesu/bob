@@ -15,7 +15,7 @@
  *
  * Token word list Copyright The Internet Society (1998).
  *
- * Version 1.1.0
+ * Version 1.1.1
  *
  * Copyright (C) authors as above
  * 
@@ -492,6 +492,10 @@ class BOB
 		),
 		'admin_ballotpapers' => array (
 			'description' => 'Printable ballot papers for paper voting (following online voting)',
+			'administrator' => true,
+		),
+		'admin_additionalvotes' => array (
+			'description' => 'Enter additional votes (from paper voting)',
 			'administrator' => true,
 		),
 	);
@@ -2560,6 +2564,12 @@ EOF;
 			return false;
 		}
 		
+		# Check the directory is writable (needed so that the Returning Officer can create the files)
+		if (!is_writable ($this->config['additionalVotesCsvDirectory'])) {
+			$this->errors[] = 'The specified directory for additional votes cast on paper is not writable.';
+			return false;
+		}
+		
 		# Check for each file, i.e. /path/to/<id>.draft.csv and /path/to/<id>.final.csv
 		$files = array ('draft' => false, 'final' => true);	// Final takes priority if both are present
 		$additionalVotesFile = false;
@@ -3290,6 +3300,142 @@ r.generateReport()
 		$html .= "\n<h2 class=\"paperballots\">PRINTABLE BALLOT ENDED</h2>";
 		
 		# Show the constructed page
+		echo $html;
+	}
+	
+	
+	# Function to enable the Returning Officer to add paper votes
+	private function admin_additionalvotes ()
+	{
+		# Start the HTML
+		$html  = '';
+		
+		# Return no problems if functionality not enabled
+		if (!$this->config['additionalVotesCsvDirectory']) {
+			echo "\n<p>The functionality for adding additional votes after close of voting is not configured for this installation.</p>";
+			return;
+		}
+		
+		# End if this is not a split ballot
+		if (!$this->splitElection) {
+			echo "\n<p>This is not an online+paper election (i.e. the cast ballots are immediately viewable on closure of online voting), so the functionality for adding additional votes is not available.</p>";
+			return false;
+		}
+		
+		# Return no problems if not relevant to the current phase
+		if (!$this->afterBallotView) {
+			echo "\n<p>Additional votes can only be added following close of voting.</p>";
+			return;
+		}
+		
+		# Set the available statuses
+		$statuses = array (
+			'draft' => '<strong>Draft</strong> (results visible only to Returning Officer)',
+			'final' => '<strong>Final</strong> (results made public)',
+		);
+		
+		# Determine if the form is submitted
+		$formSubmitted = (isSet ($_POST) && isSet ($_POST['status']) && isSet ($_POST['additionalvotes']));
+		
+		# Define the filenames of the potential additional votes files, and create a registry of any files loaded, first clearing out any existing files if the form has been submitted
+		$files = array ();
+		$existingLoaded = array ();
+		$deletedPrevious = array ();
+		foreach ($statuses as $status => $label) {
+			$files[$status] = $this->config['additionalVotesCsvDirectory'] . '/' . $this->config['id'] . '.' . $status . '.csv';
+			if (is_file ($files[$status])) {
+				if ($formSubmitted) {
+					unlink ($files[$status]);
+					$deletedPrevious[] = $status;
+				} else {
+					$existingLoaded[] = $status;
+				}
+			}
+		}
+		
+		# Obtain the form values, and set the default
+		$statusValue = ($formSubmitted && is_string ($_POST['status']) && array_key_exists ($_POST['status'], $statuses) ? $_POST['status'] : 'draft');
+		$additionalvotesValue = ($formSubmitted && is_string ($_POST['additionalvotes']) ? $_POST['additionalvotes'] : '');
+		
+		# Obtain the expected fieldnames
+		$votesTableFields = $this->votesTableFields ();
+		$fieldnames = array_keys ($votesTableFields);
+		
+		# Process the TSV data (data pasted in from a spreadsheet will be TSV)
+		$additionalvotesErrorMessage = false;
+		if ($formSubmitted && $additionalvotesValue) {
+			$csvData = $this->csvToArray ($additionalvotesValue, $separator = "\t", $fieldnames, $this->additionalVotePrefix, $additionalvotesErrorMessage);
+		}
+		
+		# Determine the form status
+		$formComplete = (strlen ($statusValue) && strlen ($additionalvotesValue) && !$additionalvotesErrorMessage);
+		
+		# Create the form to add the votes
+		$html .= "\n<p>Using this form, you can add in additional votes collected on paper.</p>";
+		$html .= "\n<p>It is <strong>your</strong> responsibility to check the validity of the votes you are pasting in.</p>";
+		if ($existingLoaded) {
+			$html .= "\n" . '<p>There is previously-added additional vote data (' . implode (' and ', $existingLoaded) . ') loaded. Submitting this form (even if the contents are found to be invalid) will clear this existing additional vote data.</p>';
+		}
+		if ($deletedPrevious) {
+			$html .= "\n" . '<p>Previously-added additional vote data (' . implode (' and ', $deletedPrevious) . ') has been cleared.</p>';
+		}
+		$html .= "\n<form method=\"post\" action=\"./?" . __FUNCTION__ . '">';
+		if ($formSubmitted && !$statusValue) {
+			$html .= "\n" . '<p class="warning"><em>You didn\'t select a status value!</em></p>';
+		}
+		$html .= "\n" . '<p>';
+		foreach ($statuses as $status => $label) {
+			$html .= "\n\t" . "<input type=\"radio\" name=\"status\" id=\"status_{$status}\" value=\"{$status}\"" . ($statusValue == $status ? ' checked="checked"' : '') . " /><label for=\"status_{$status}\"> {$label}</label><br />";
+		}
+		$html .= "\n" . '</p>';
+		$html .= "\n" . '<p>Paste in the contents of your spreadsheet; see notes below about the format.</p>';
+		if ($formSubmitted && !$additionalvotesValue) {
+			$html .= "\n" . '<p class="warning"><em>You didn\'t enter your spreadsheet data!</em></p>';
+		}
+		if ($additionalvotesErrorMessage) {
+			$html .= "\n" . '<p class="warning"><em>' . $additionalvotesErrorMessage . '</em></p>';
+		}
+		$html .= "\n" . '<textarea name="additionalvotes" cols="100" rows="15">' . htmlspecialchars ($additionalvotesValue) . '</textarea>';
+		$html .= "\n" . '<p class=\"comment\">The first row must be of the fieldnames, i.e.: <em>' . implode ("\t", $fieldnames) . '</em><br />';
+		$html .= "\n" . "Each result row must begin with a token starting <em>{$this->additionalVotePrefix}</em>, i.e. <em>{$this->additionalVotePrefix}1</em> then <em>{$this->additionalVotePrefix}2</em>, etc., one vote set per line.</p>";
+		$html .= "\n" . '<p><input type="submit" /></p>';
+		$html .= "\n</form>";
+		
+		# End if the form is not complete
+		if (!$formComplete) {
+			echo $html;
+			return $html;
+		}
+		
+		# Clear the form HTML
+		$html = '';
+		
+		# Convert the CSV array to a string
+		$csvString  = '';
+		$csvString .= implode (',', $fieldnames) . "\n";
+		foreach ($csvData as $token => $row) {
+			$csvString .= $token . ',' . implode (',', $row) . "\n";
+		}
+		$csvString = trim ($csvString);
+		
+		# Write the file and its contents; the additionalVotesSetupOk() routine has already established it is writable
+		$filename = $files[$statusValue];
+		file_put_contents ($filename, $csvString);
+		
+		# Read out the result
+		$contents = file_get_contents ($filename);
+		$html .= "\n" . '<p><strong>Your file has been correctly saved, and reads as below.</strong></p>';
+		if ($statusValue == 'draft') {
+			$html .= "\n" . '<p><strong>Please <a href="./?results">check the results page</a></strong> to ensure this is correct. Currently the data is only visible to you as Returning Officer.</p>';
+			$html .= "\n" . '<p><strong>You must then <a href="./?admin_additionalvotes">re-enter the data, but as final</a></strong> for it to be visible to those on the electoral roll.</p>';
+		} else {
+			$html .= "\n" . '<p><strong>The <a href="./?results">combined, final result</a> is now visible</strong> to those on the electoral roll.</p>';
+		}
+		$html .= "\n<pre>";
+		$html .= "\n" . htmlspecialchars ($contents);
+		$html .= "\n</pre>";
+		
+		# Show the HTML
 		echo $html;
 	}
 	
