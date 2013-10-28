@@ -2636,7 +2636,7 @@ EOF;
 			
 			# Return false if any row has more/less cells than headers
 			if (count ($cells) != $totalHeaders) {
-				$errorMessage = "Row " . ($rowNumber + 1) . " does not contain the right number of cells, so the data is faulty. Please check you have supplied enough header titles in the first row.";	// Show row number as human number, not zero-indexed
+				$errorMessage = "Row " . ($rowNumber + 1) . " does not match the number of header titles in the first row.";	// Show row number as human number, not zero-indexed
 				return false;
 			}
 			
