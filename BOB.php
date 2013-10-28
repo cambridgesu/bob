@@ -1354,15 +1354,7 @@ class BOB
 		);
 		
 		# Define the fields for the vote table, used below either for checking or table creation
-		$votesTableFields = array ();	// Explicit creation of an array; not necessary in the PHP language
-		$votesTableFields['token'] = 'VARCHAR(32) collate utf8_unicode_ci NOT NULL PRIMARY KEY';		// The token that the voter receives
-		foreach ($this->config['electionInfo'] as $index => $election) {
-			$vote = $index + 1;	// Field names start at 1, not 0
-			$positionsAvailable = count ($election) - 1;					// Number of candidates, i.e. number of lines in the array minus the title
-			for ($position = 1; $position <= $positionsAvailable; $position++) {
-				$votesTableFields["v{$vote}p{$position}"] = 'TINYINT(4)';	// The list of cast ballots
-			}
-		}
+		$votesTableFields = $this->votesTableFields ();
 		
 		# Check if the tables exist
 		$tables = $this->getTables ($this->config['dbDatabase']);
@@ -1386,6 +1378,25 @@ class BOB
 		
 		# Signal success
 		return true;
+	}
+	
+	
+	# Define the fields for the vote table, used below either for checking or table creation
+	private function votesTableFields ()
+	{
+		# Assemble the fields
+		$votesTableFields = array ();	// Explicit creation of an array; not necessary in the PHP language
+		$votesTableFields['token'] = 'VARCHAR(32) collate utf8_unicode_ci NOT NULL PRIMARY KEY';		// The token that the voter receives
+		foreach ($this->config['electionInfo'] as $index => $election) {
+			$vote = $index + 1;	// Field names start at 1, not 0
+			$positionsAvailable = count ($election) - 1;					// Number of candidates, i.e. number of lines in the array minus the title
+			for ($position = 1; $position <= $positionsAvailable; $position++) {
+				$votesTableFields["v{$vote}p{$position}"] = 'TINYINT(4)';	// The list of cast ballots
+			}
+		}
+		
+		# Return the fields
+		return $votesTableFields;
 	}
 	
 	
