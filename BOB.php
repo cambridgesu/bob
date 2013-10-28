@@ -2596,7 +2596,7 @@ EOF;
 		
 		# Convert CSV to array
 		$serialKeyPrefixRequired = $this->additionalVotePrefix;		// Prefix for key names which must exist in serial from 1 without gaps (i.e. additionalvote1,additionalvote2,...); this also provides a namespace to avoid clashes with the standard token list, so that merging is safe
-		$data = $this->csvToArray ($contents, $fieldnames, $serialKeyPrefixRequired, $csvErrorMessage);
+		$data = $this->csvToArray ($contents, $separator = ',', $fieldnames, $serialKeyPrefixRequired, $csvErrorMessage);
 		if ($csvErrorMessage) {
 			$errorMessage = $csvErrorMessage;
 			return array ();	// Return no results
@@ -2607,8 +2607,8 @@ EOF;
 	}
 	
 	
-	# Helper function to process a CSV string to an associative array
-	private function csvToArray ($string, $expectedHeaders, $serialKeyPrefixRequired = false, &$errorMessage = '')
+	# Helper function to process a character-separated values string to an associative array
+	private function csvToArray ($string, $separator = ',', $expectedHeaders, $serialKeyPrefixRequired = false, &$errorMessage = '')
 	{
 		# Start an array of data to fill
 		$data = array ();
@@ -2621,7 +2621,7 @@ EOF;
 		foreach ($lines as $rowNumber => $line) {
 			
 			# Create the cells
-			$cells = explode (',', $line);
+			$cells = explode ($separator, $line);
 			
 			# Create the header row
 			if ($rowNumber == 0) {
