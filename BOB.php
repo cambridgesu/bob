@@ -2147,15 +2147,15 @@ class BOB
 	
 	echo '
 		<p><font color="red"><strong>Please double-check your choices before submitting your vote!</strong></font> Due to the anonymity built into this voting system, it is not possible to correlate your response after you vote.</p>
-		<input type="checkbox" name="confirmvote" id="confirmvote" /><label for="confirmvote">I have checked my vote.</label>
+		<p><input type="checkbox" name="confirmvote" id="confirmvote" /><label for="confirmvote"> I have checked my vote.</label></p>
 		<p>After you click "Cast my vote", your vote will be passed anonymously to the Returning Officer. You will receive a blind copy by e-mail. This will allow you to check we have recorded your vote correctly by confirming to yourself that the printed sheets that will be posted after the votes have been counted. Any queries should be directed to the Returning Officer.</p>
 		<p><input value="Cast my vote" type="submit" /></p>
 	</form>
 	</div>
 	';
   }
-  
-  
+	
+	
   // Function to generate a unique token
   private function generateUniqueToken ()
   {
@@ -2297,27 +2297,31 @@ You should not disclose this e-mail or your voting token to others.
 	$message .= "\n\nConfiguration security hash of the program: " . $this->bobMd5;
 	$message .= "\nConfiguration security hash for this election: " . $this->configMd5;
 	$message .= "\n\n\n--- END OF E-MAIL ---\n";
-    
-    echo <<<EOF
-done.</p>
-
-<p>If you do not receive a confirmation e-mail containing the text in the box below within a minute or two, we recommend that you save or print this webpage as an alternative personal record of your vote.</p>
-<p>You should not disclose this e-mail or your voting token to others.</p>
-<p><strong>When you have finished reading this page, including text below, you should ideally <a href="{$this->logoutLocation}">logout</a> then close your browser.</strong></p>
-
-<div class="votemsg">
-<pre>
-$message
-</pre>
-</div>
-
-<p>E-mailing your vote to the mailbox &lt;{$this->config['emailReturningOfficer']}&gt; and blind-carbon-copying {$this->username}@cam.ac.uk ...
-EOF;
-
-    if(!(mail($this->config['emailReturningOfficer'],'Online voting: ' . $this->config['title'] . ' [' . $this->config['id'] . ']',$message,"From: {$this->config['emailTech']}\r\nBCC: {$this->username}@cam.ac.uk\r\n"))) return($this->err("Enqueue e-mail to voter failed."));
-    echo "\n<p>Voting confirmation e-mail successfully enqueued.</p>";
+	
+	# Continue the narration
+	echo "\n" . "done.</p>";
+	echo "\n<p>If you do not receive a confirmation e-mail containing the text in the box below within a minute or two, we recommend that you save or print this webpage as an alternative personal record of your vote.</p>";
+	echo "\n<p>You should not disclose this e-mail or your voting token to others.</p>";
+	echo "\n<p><strong>When you have finished reading this page, including text below, you should ideally <a href=\"{$this->logoutLocation}\">logout</a> then close your browser.</strong></p>";
+	echo "\n<div class=\"votemsg\">";
+	echo "\n<pre>";
+	echo "\n" . $message;
+	echo "\n</pre>";
+	echo "\n</div>";
+	echo "<p>E-mailing your vote to the mailbox &lt;{$this->config['emailReturningOfficer']}&gt; and blind-carbon-copying {$this->username}@cam.ac.uk ...</p>";
+	
+	# Send the e-mail and confirm
+	#!# NB Mail domain of @cam.ac.uk is currently hard-coded
+	$subject = 'Online voting: ' . $this->config['title'] . ' [' . $this->config['id'] . ']';
+	$extraHeaders  = "From: {$this->config['emailTech']}\r\n";
+	$extraHeaders .= "BCC: {$this->username}@cam.ac.uk\r\n";
+	if (!mail ($this->config['emailReturningOfficer'], $subject, $message, $extraHeaders)) {
+		return ($this->err ('Enqueue e-mail to voter failed.'));
+	}
+	echo "\n<p>Voting confirmation e-mail successfully enqueued.</p>";
 	echo "\n<p><strong>Voting process has successfully completed.</strong></p>";
-    return true;
+	
+	return true;
   }
   
   
