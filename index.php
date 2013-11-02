@@ -1,7 +1,7 @@
 <?php
 
 ## Config file for BOB ##
-## All settings must be specified, except for these (which will revert to internal defaults if omitted): dbHostname,countingInstallation,countingMethod,urlMoreInfo,adminDuringElectionOK,randomisationInfo,frontPageMessageHtml,afterVoteMessageHtml,disableListWhoVoted,organisationName,organisationUrl,organisationLogoUrl,headerLocation,footerLocation,additionalVotesCsvDirectory
+## All settings must be specified, except for these (which will revert to internal defaults if omitted): dbHostname,countingInstallation,countingMethod,urlMoreInfo,adminDuringElectionOK,randomisationInfo,frontPageMessageHtml,afterVoteMessageHtml,voterReceiptDisableable,disableListWhoVoted,organisationName,organisationUrl,organisationLogoUrl,headerLocation,footerLocation,additionalVotesCsvDirectory
 
 # Unique identifier for this ballot
 $config['id'] = 'testelection';
@@ -41,6 +41,9 @@ $config['referendumThresholdPercent'] = 10;
 # Extra messages (as HTML), if any, which people will see on the front page before voting, and when they have voted
 $config['frontPageMessageHtml'] = false;
 $config['afterVoteMessageHtml'] = false;
+
+# Whether users can choose to disable the e-mail vote receipt
+$config['voterReceiptDisableable'] = false;
 
 # Whether to disable the list of usernames who voted that appears on the show votes page afterwards (the default increases voter assurance but at expense of some privacy)
 $config['disableListWhoVoted'] = false;

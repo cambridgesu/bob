@@ -15,7 +15,7 @@
  *
  * Token word list Copyright The Internet Society (1998).
  *
- * Version 1.1.1
+ * Version 1.1.2
  *
  * Copyright (C) authors as above
  * 
@@ -47,7 +47,7 @@
 <?php
 
 ## Config file for BOB ##
-## All settings must be specified, except for these (which will revert to internal defaults if omitted): dbHostname,countingInstallation,countingMethod,urlMoreInfo,adminDuringElectionOK,randomisationInfo,referendumThresholdPercent,frontPageMessageHtml,afterVoteMessageHtml,disableListWhoVoted,organisationName,organisationUrl,organisationLogoUrl,headerLocation,footerLocation,additionalVotesCsvDirectory
+## All settings must be specified, except for these (which will revert to internal defaults if omitted): dbHostname,countingInstallation,countingMethod,urlMoreInfo,adminDuringElectionOK,randomisationInfo,referendumThresholdPercent,frontPageMessageHtml,afterVoteMessageHtml,voterReceiptDisableable,disableListWhoVoted,organisationName,organisationUrl,organisationLogoUrl,headerLocation,footerLocation,additionalVotesCsvDirectory
 
 # Unique identifier for this ballot
 $config['id'] = 'testelection';
@@ -87,6 +87,9 @@ $config['referendumThresholdPercent'] = 10;
 # Extra messages (as HTML), if any, which people will see on the front page before voting, and when they have voted
 $config['frontPageMessageHtml'] = false;
 $config['afterVoteMessageHtml'] = false;
+
+# Whether users can choose to disable the e-mail vote receipt
+$config['voterReceiptDisableable'] = false;
 
 # Whether to disable the list of usernames who voted that appears on the show votes page afterwards (the default increases voter assurance but at expense of some privacy)
 $config['disableListWhoVoted'] = false;
@@ -172,8 +175,8 @@ $config['countingMethod'] = 'ERS97STV';
 
 
 # The database table should contain these fields, in addition to id as above:
-# title,urlMoreInfo,emailReturningOfficer,emailTech,officialsUsernames,ballotStart,ballotEnd,ballotViewable,randomisationInfo,referendumThresholdPercent,frontPageMessageHtml,afterVoteMessageHtml,disableListWhoVoted,adminDuringElectionOK,organisationName,organisationUrl,organisationLogoUrl,headerLocation,footerLocation,additionalVotesCsvDirectory,electionInfo
-# However, urlMoreInfo,referendumThresholdPercent,frontPageMessageHtml,afterVoteMessageHtml,disableListWhoVoted,adminDuringElectionOK,headerLocation,footerLocation,additionalVotesCsvDirectory are optional fields which need not be created
+# title,urlMoreInfo,emailReturningOfficer,emailTech,officialsUsernames,ballotStart,ballotEnd,ballotViewable,randomisationInfo,referendumThresholdPercent,frontPageMessageHtml,afterVoteMessageHtml,voterReceiptDisableable,disableListWhoVoted,adminDuringElectionOK,organisationName,organisationUrl,organisationLogoUrl,headerLocation,footerLocation,additionalVotesCsvDirectory,electionInfo
+# However, urlMoreInfo,referendumThresholdPercent,frontPageMessageHtml,afterVoteMessageHtml,voterReceiptDisableable,disableListWhoVoted,adminDuringElectionOK,headerLocation,footerLocation,additionalVotesCsvDirectory are optional fields which need not be created
 
 
 ## End of config; now run the system ##
@@ -186,7 +189,7 @@ new BOB ($config);
  *	
 	E.g. to create the instances table, use the following.
 	Note that, in a managed GUI voting scenario, the items commented out with -- may be wanted. They are not needed by BOB itself.
-	There are other fields, e.g. adminDuringElectionOK,headerLocation,additionalVotesCsvDirectory,footerLocation,disableListWhoVoted are best set as a global config file option.
+	There are other fields, e.g. adminDuringElectionOK,headerLocation,additionalVotesCsvDirectory,footerLocation,voterReceiptDisableable,disableListWhoVoted are best set as a global config file option.
 
 CREATE TABLE IF NOT EXISTS `instances` (
    `id` varchar(255) collate utf8_unicode_ci NOT NULL COMMENT 'Generated globally-unique ID',
@@ -435,6 +438,7 @@ class BOB
 		'ballotViewable'				=> NULL,
 		'frontPageMessageHtml'			=> false,
 		'afterVoteMessageHtml'			=> false,
+		'voterReceiptDisableable'			=> false,
 		'disableListWhoVoted'			=> false,
 		'organisationName'				=> false,
 		'organisationUrl'				=> false,
@@ -2148,7 +2152,8 @@ class BOB
 	echo '
 		<p><font color="red"><strong>Please double-check your choices before submitting your vote!</strong></font> Due to the anonymity built into this voting system, it is not possible to correlate your response after you vote.</p>
 		<p><input type="checkbox" name="confirmvote" id="confirmvote" /><label for="confirmvote"> I have checked my vote.</label></p>
-		<p>After you click "Cast my vote", your vote will be passed anonymously to the Returning Officer. You will receive a blind copy by e-mail. This will allow you to check we have recorded your vote correctly by confirming to yourself that the printed sheets that will be posted after the votes have been counted. Any queries should be directed to the Returning Officer.</p>
+		<p>After you click "Cast my vote", your vote will be passed anonymously to the Returning Officer. ' . ($this->config['voterReceiptDisableable'] ? 'If specified below, you' : 'You') . ' will receive a blind copy by e-mail. On the next page your vote will be displayed, by way of confirmation. These will allow you to check that we have recorded your vote correctly by confirming to yourself that the printed sheets that will be posted after the votes have been counted. Any queries should be directed to the Returning Officer.</p>
+		' . ($this->config['voterReceiptDisableable'] ? '<p><input type="checkbox" name="voterreceipt" id="voterreceipt"' . ($this->voterReceipt () ? ' checked="checked"': '') . ' /><label for="voterreceipt"> Send me a receipt to ' . $this->username . '@cam.ac.uk showing my vote token and votes.</label><br />(Untick this option if your mailbox is shared (i.e. so others could see your vote) or this address is not enabled or is over-quota (because bounces could be seen by the Returning Officer).</p>' : '') . '
 		<p><input value="Cast my vote" type="submit" /></p>
 	</form>
 	</div>
@@ -2156,6 +2161,21 @@ class BOB
   }
 	
 	
+	# Function to determine whether a voter receipt is to be sent
+	private function voterReceipt ()
+	{
+		# If the config states that the voter receipt is not disableable, it should be sent
+		if (!$this->config['voterReceiptDisableable']) {return true;}
+		
+		# If the form is not posted, by default, a receipt is enabled (so the checkbox will be checked)
+		if (!$_POST) {return true;}
+		
+		# Otherwise, check the voter's intention
+		return (isSet ($_POST['voterreceipt']) && is_string ($_POST['voterreceipt']) && ($_POST['voterreceipt'] == 'on'));
+	}
+	
+  
+  
   // Function to generate a unique token
   private function generateUniqueToken ()
   {
@@ -2186,6 +2206,9 @@ class BOB
   // internal voting workflow
   private function voteWFinternal(&$openTrans)
   {
+	# Determine whether the voter will receive the vote receipt
+	$voterReceipt = $this->voterReceipt ();
+	
 	// Create a string of column names and corresponding column values by looping through the configuration array and looking up the (now-validated) value in the POST array
 	$coln  = '';
 	$colv  = '';
@@ -2239,7 +2262,7 @@ class BOB
 		echo "\n" . "</div>";
 	}
 	echo "
-	<p>We will now attempt to read back your vote from our database, and e-mail it to the returning officer, blind-carbon-copied (BCC) to your @cam address.
+	<p>We will now attempt to read back your vote from our database, and e-mail it to the returning officer" . ($voterReceipt ? ", blind-carbon-copied (BCC) to your @cam address" : '') . ".
 	In the highly unusual case that there is a failure somewhere in the remainder of this voting process, you should keep a record of your proof-of-voting token '<strong>{$token}</strong>' and use it to check your vote really was recorded correctly when the count sheet is posted up after voting has closed.</p>
 	
 	<p>Reading back your vote ...
@@ -2296,11 +2319,14 @@ You should not disclose this e-mail or your voting token to others.
 	$message .= "\n\nReference ID for this election: " . $this->config['id'];
 	$message .= "\n\nConfiguration security hash of the program: " . $this->bobMd5;
 	$message .= "\nConfiguration security hash for this election: " . $this->configMd5;
+	if (!$voterReceipt) {
+		$message .= "\n\nThe voter opted not to receive an e-mail receipt.";
+	}
 	$message .= "\n\n\n--- END OF E-MAIL ---\n";
 	
 	# Continue the narration
 	echo "\n" . "done.</p>";
-	echo "\n<p>If you do not receive a confirmation e-mail containing the text in the box below within a minute or two, we recommend that you save or print this webpage as an alternative personal record of your vote.</p>";
+	echo "\n<p>" . ($voterReceipt ? 'If you do not receive a confirmation e-mail containing the text in the box below within a minute or two, we' : 'We') . " recommend that you save or print this webpage as an alternative personal record of your vote.</p>";
 	echo "\n<p>You should not disclose this e-mail or your voting token to others.</p>";
 	echo "\n<p><strong>When you have finished reading this page, including text below, you should ideally <a href=\"{$this->logoutLocation}\">logout</a> then close your browser.</strong></p>";
 	echo "\n<div class=\"votemsg\">";
@@ -2308,15 +2334,17 @@ You should not disclose this e-mail or your voting token to others.
 	echo "\n" . $message;
 	echo "\n</pre>";
 	echo "\n</div>";
-	echo "<p>E-mailing your vote to the mailbox &lt;{$this->config['emailReturningOfficer']}&gt; and blind-carbon-copying {$this->username}@cam.ac.uk ...</p>";
+	echo "\n<p>E-mailing your vote to the mailbox &lt;{$this->config['emailReturningOfficer']}&gt;" . ($voterReceipt ? " and blind-carbon-copying {$this->username}@cam.ac.uk" : '') . ' ...</p>';
 	
 	# Send the e-mail and confirm
 	#!# NB Mail domain of @cam.ac.uk is currently hard-coded
 	$subject = 'Online voting: ' . $this->config['title'] . ' [' . $this->config['id'] . ']';
 	$extraHeaders  = "From: {$this->config['emailTech']}\r\n";
-	$extraHeaders .= "BCC: {$this->username}@cam.ac.uk\r\n";
+	if ($voterReceipt) {
+		$extraHeaders .= "BCC: {$this->username}@cam.ac.uk\r\n";
+	}
 	if (!mail ($this->config['emailReturningOfficer'], $subject, $message, $extraHeaders)) {
-		return ($this->err ('Enqueue e-mail to voter failed.'));
+		return ($this->err ('Enqueue voting confirmation e-mail failed.'));
 	}
 	echo "\n<p>Voting confirmation e-mail successfully enqueued.</p>";
 	echo "\n<p><strong>Voting process has successfully completed.</strong></p>";
