@@ -2146,7 +2146,7 @@ class BOB
 		// Create the HTML, creating as many boxes as requested
 		echo "\n\n<table class=\"vote v{$i}\">\n";
 		if (count ($options) > 11) {echo "<p class=\"comment\">Note: there are " . (count ($options) - 1) . " candidates standing in this election. Your browser may require you to scroll to see all.</p>";}	// IE6/Win in Classic Theme, i.e. not XP standard, only displays 11 options at once
-		if (!$isReferendum) {echo "\t\t<tr>\n\t\t\t<th>Preference</th>\n\t\t\t<th>Candidate</th>\n\t\t</tr>\n";}
+		if (!$isReferendum) {echo "\t\t<tr>\n\t\t\t<th>Preference</th>\n\t\t\t<th>Candidate/option</th>\n\t\t</tr>\n";}
 		for ($box = 1; $box <= $boxes; $box++) {
 			
 			// Determine what option has been selected for this box, if any
