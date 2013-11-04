@@ -15,7 +15,7 @@
  *
  * Token word list Copyright The Internet Society (1998).
  *
- * Version 1.1.2
+ * Version 1.1.3
  *
  * Copyright (C) authors as above
  * 
@@ -1715,7 +1715,7 @@ class BOB
 			$html .= "\n\t\t" . '<li><strong>Current status:</strong> The ballot has not yet opened.</li>';
 		}
 		if ($this->duringElection) {
-			$html .= "\n\t\t" . '<li><strong>Current status:</strong> Voting is now taking place.</li>';
+			$html .= "\n\t\t" . '<li><strong>Current status:</strong> Voting is now open for the above ballot.</li>';
 			if ($this->userIsRegisteredVoter) {
 				if ($this->userHasVoted) {
 					$html .= "\n\t\t" . '<li>You have voted already.</li>';
@@ -1755,12 +1755,12 @@ class BOB
 			$html .= "\n" . '<p>As an election official, you can access the <a href="./?admin">Admin section</a> to monitor the ballot.</p>';
 		}
 		
-		# Details for this ballot
-		$html .= "\n<h2>Details for this ballot " . ($this->afterBallotView ? 'were' : 'are') . ":</h2>";
+		# Details of this ballot
+		$html .= "\n<h2>Details of this ballot:</h2>";
 		$html .= "\n<table class=\"lines\">";
 		$html .= "\n\t<tr>\n\t\t<td>Name of election:</td>\n\t\t<td><strong>" . htmlspecialchars ($this->config['title']) . "</strong></td>\n\t</tr>";
 		if ($this->afterBallotView) {$html .= "\n\t<tr>\n\t\t<td>Votes cast" . ($this->splitElection ? ' electronically' : '') . ":</td>\n\t\t<td><strong>" . number_format ($this->totalVoted) . "</strong></td>\n\t</tr>";}
-		if ($this->config['urlMoreInfo']) {$html .= "\n\t<tr>\n\t\t<td>More info about this ballot:</td>\n\t\t<td><a href=\"{$this->config['urlMoreInfo']}\">More info</a></td>\n\t</tr>";}
+		if ($this->config['urlMoreInfo']) {$html .= "\n\t<tr>\n\t\t<td>More information about this ballot:</td>\n\t\t<td><a href=\"{$this->config['urlMoreInfo']}\"><strong>Information about this ballot</strong></a></td>\n\t</tr>";}
 		if ($this->config['organisationName'] || $this->config['organisationLogoUrl']) {
 			$html .= "\n\t<tr>\n\t\t<td>Organisation:</td>\n\t\t<td>";
 			if ($this->config['organisationName']) {$html .= ($this->config['organisationUrl'] ? "<a href=\"{$this->config['organisationUrl']}\">" . htmlspecialchars ($this->config['organisationName']) . '</a>' : htmlspecialchars ($this->config['organisationName']));}
@@ -1769,10 +1769,10 @@ class BOB
 			$html .= "</td>\n\t</tr>";
 		}
 		$html .= "\n\t<tr>\n\t\t<td>Username(s) of election official(s):</td>\n\t\t<td><strong>" . htmlspecialchars (str_replace (' ', ', ', $this->config['officialsUsernames'])) . "</strong></td>\n\t</tr>";
-		$html .= "\n\t<tr>\n\t\t<td>Total eligible registered voters:</td>\n\t\t<td>" . number_format ($this->registeredVoters) . ($this->beforeElection ? ' (This may change before the voting opens)' : '') . "</td>\n\t</tr>";
 		$html .= "\n\t<tr>\n\t\t<td>Vote opening time:</td>\n\t\t<td>" . $this->ballotStartFormatted . "</td>\n\t</tr>";
 		$html .= "\n\t<tr>\n\t\t<td>Vote closing time:</td>\n\t\t<td>" . $this->ballotEndFormatted . "</td>\n\t</tr>";
 		$html .= "\n\t<tr>\n\t\t<td>List of votes cast viewable at:</td>\n\t\t<td>" . $this->ballotViewableFormatted . "</td>\n\t</tr>";
+		$html .= "\n\t<tr>\n\t\t<td>Total eligible registered online voters:</td>\n\t\t<td>" . number_format ($this->registeredVoters) . ($this->beforeElection ? ' (This may change before the voting opens)' : '') . "</td>\n\t</tr>";
 		if ($this->config['randomisationInfo']) {$html .= "\n\t<tr>\n\t\t<td>Randomisation:</td>\n\t\t<td>" . htmlspecialchars ($this->config['randomisationInfo']) . "</td>\n\t</tr>";}
 		$html .= "\n\t<tr>\n\t\t<td>E-mail of Technical Administrator:</td>\n\t\t<td>" . htmlspecialchars ($this->config['emailTech']) . "</td>\n\t</tr>";
 		if (!$this->beforeElection) {	// The security hashes only need to be constant from the opening of the ballot onwards, e.g. the configuration would change before opening if a candidate pulled out
@@ -1785,9 +1785,9 @@ class BOB
 		
 		# Information about the voting system and link to view source
 		$html .= "\n<h2>About the voting system</h2>";
-		$html .= "\n<p>This system provides a means to forward your anonymised votes to the Returning Officer. The Returning Officer will be able to see who has voted but will not be able to tell who has cast which votes.</p>";
+		$html .= "\n<p>This system enables votes for a ballot to be cast online and securely and anonymously communicated to the Returning Officer. The Returning Officer will be able to see who has voted but will not be able to tell who has cast which votes.</p>";
 		$html .= "\n<p>When you have successfully placed your vote, you will be e-mailed a sequence of random-looking short words - your \"voting token\". This system does not store the connection between your voting token and your identity, however it does store your voting token in a database, and e-mails it to a mailbox for audit purposes. When polls have closed, the list of all the votes cast will be made available - because only you will know your voting token, you will be able to check that your vote was correctly included.</p>";
-		$html .= "\n<p>Disclaimer: The (extremely minimal) software behind this voting system has been checked independently, and has been agreed to be a system which should avoid, but will at least detect voting irregularities.
+		$html .= "\n<p>Disclaimer: The (extremely minimal) software behind this voting system has been checked independently, and has been agreed to be a system designed to avoid and detect voting irregularities.
 						The service is hosted on a computer that is not under the direct administrative control of the organisation running the election.
 						Evidence can be acquired from the external System Administrators &lt;{$this->config['emailTech']}&gt; that the software is not modified during the election. 
 						If you do not trust this system, you are advised to contact the Returning Officer.
@@ -2091,7 +2091,7 @@ class BOB
 	# Voting instructions
 	echo "
 	<h2>How to vote</h2>
-	<p>Voting is by the Single Transferable Vote system described in the published rules for this election.</p>
+	<p>Voting is according to the published Single Transferable Vote rules.</p>
 	<ul>
 		<li>Next to number 1 (in the preference column for a given post), select the name of the candidate to whom you give your first preference (using the pull-down selection menu controls).</li>
 		<li>You may also enter, against preference ranks 2, 3 and so on, the names of other candidates in the order you wish to vote for them.</li>
@@ -2253,7 +2253,7 @@ class BOB
     
     // update of voter having voted was successful
     echo " done.</p>
-	<p>Our database now indicates that it has successfully recorded your vote and, separately, that you have voted. Details are below.</p>
+	<p>Our database indicates that it has successfully recorded your vote and, separately, that you have voted. Details are below.</p>
 	<p><strong>Thank you for voting. <a href=\"./\">Return to the front page.</a></strong></p>
 	";
 	if ($this->config['afterVoteMessageHtml']) {
@@ -2264,8 +2264,6 @@ class BOB
 	echo "
 	<p>We will now attempt to read back your vote from our database, and e-mail it to the returning officer" . ($voterReceipt ? ", blind-carbon-copied (BCC) to your @cam address" : '') . ".
 	In the highly unusual case that there is a failure somewhere in the remainder of this voting process, you should keep a record of your proof-of-voting token '<strong>{$token}</strong>' and use it to check your vote really was recorded correctly when the count sheet is posted up after voting has closed.</p>
-	
-	<p>Reading back your vote ...
 	";
 
     // create e-mail body containing ballot information
@@ -2325,7 +2323,6 @@ You should not disclose this e-mail or your voting token to others.
 	$message .= "\n\n\n--- END OF E-MAIL ---\n";
 	
 	# Continue the narration
-	echo "\n" . "done.</p>";
 	echo "\n<p>" . ($voterReceipt ? 'If you do not receive a confirmation e-mail containing the text in the box below within a minute or two, we' : 'We') . " recommend that you save or print this webpage as an alternative personal record of your vote.</p>";
 	echo "\n<p>You should not disclose this e-mail or your voting token to others.</p>";
 	echo "\n<p><strong>When you have finished reading this page, including text below, you should ideally <a href=\"{$this->logoutLocation}\">logout</a> then close your browser.</strong></p>";
@@ -2334,7 +2331,7 @@ You should not disclose this e-mail or your voting token to others.
 	echo "\n" . $message;
 	echo "\n</pre>";
 	echo "\n</div>";
-	echo "\n<p>E-mailing your vote to the mailbox &lt;{$this->config['emailReturningOfficer']}&gt;" . ($voterReceipt ? " and blind-carbon-copying {$this->username}@cam.ac.uk" : '') . ' ...</p>';
+	echo "\n<p>E-mailing your vote to the mailbox &lt;{$this->config['emailReturningOfficer']}&gt;" . ($voterReceipt ? " and blind-carbon-copying {$this->username}@cam.ac.uk" : '') . ' ...';
 	
 	# Send the e-mail and confirm
 	#!# NB Mail domain of @cam.ac.uk is currently hard-coded
@@ -2346,7 +2343,7 @@ You should not disclose this e-mail or your voting token to others.
 	if (!mail ($this->config['emailReturningOfficer'], $subject, $message, $extraHeaders)) {
 		return ($this->err ('Enqueue voting confirmation e-mail failed.'));
 	}
-	echo "\n<p>Voting confirmation e-mail successfully enqueued.</p>";
+	echo "\n" . " Voting confirmation e-mail successfully enqueued.</p>";
 	echo "\n<p><strong>Voting process has successfully completed.</strong></p>";
 	
 	return true;
@@ -2439,6 +2436,7 @@ You should not disclose this e-mail or your voting token to others.
 		}
 		
 		# Add a jump list
+		echo "\n<p>This page provides information on the anonymous votes cast.</p>";
 		echo "\n<p>Jump below to:</p>";
 		echo "\n<ul>";
 		echo "\n\t<li><a href=\"#key\">Key to vote data</a></li>";
@@ -3069,7 +3067,7 @@ r.generateReport()
 		
 		# End here if the voter list has been disabled
 		if ($this->config['disableListWhoVoted']) {
-			echo "\n<p>For reasons of privacy, this system is configured not to show the list of those who voted, instead showing above - for assurance reasons - a statement whether you voted.</p>";
+			echo "\n<p>For reasons of privacy, this system is configured not to show the list of those who voted. Instead, for assurance purposes, a statement is shown above that confirms whether you voted.</p>";
 			return false;
 		}
 		
