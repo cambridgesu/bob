@@ -460,6 +460,7 @@ class BOB
 		),
 		/* Functions available to normal users */
 		'vote' => array (
+			#!# The description should really change to "Your vote has been cast" once cast
 			'description' => 'Cast your vote',
 			'administrator' => false,
 		),
