@@ -2111,7 +2111,7 @@ class BOB
 		<li>Continue until you have voted for those candidates/options you wish to vote for, and leave any remaining boxes blank. You are under no obligation to vote for all candidates/options.</li>"
 		. (count ($this->config['electionInfo']) > 1 ? "<li>Repeat this process for each post listed.</li>" : '')
 		. ($ronPresent ? "<li>Some elections may list a candidate named 'RON'. This acronym expands to 'Re-Open Nominations'. You may vote for RON as you would any other candidate. Should RON be 'elected', the position will be re-opened, and will be decided at a subsequent election.</li>" : '') . "
-		<li>The order of your preferences is crucial. Later preferences will only be considered if an earlier preference has qualified for election or has been eliminated from the election due to gaining an insufficient number of votes. </li>
+		<li>The order of your preferences is crucial. A later preference can be considered only if an earlier preference has received sufficient votes to qualify for election or has been excluded because of insufficient support. Under no circumstances can a later preference count against an earlier preference.</li>
 		<li>When you have completed this form CHECK IT.</li>
 		<li>When you have checked the form, click on the 'Cast my vote' button.</li>
 	</ul>
