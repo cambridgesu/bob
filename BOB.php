@@ -2106,9 +2106,9 @@ class BOB
 	<h2>How to vote</h2>
 	<p>Voting is according to the published Single Transferable Vote rules.</p>
 	<ul>
-		<li>Next to number 1 (in the preference column for a given post), select the name of the candidate to whom you give your first preference (using the pull-down selection menu controls).</li>
-		<li>You may also enter, against preference ranks 2, 3 and so on, the names of other candidates in the order you wish to vote for them.</li>
-		<li>Continue until you have voted for those candidates you wish to vote for, and leave any remaining boxes blank. You are under no obligation to vote for all candidates.</li>"
+		<li>Next to number 1 (in the preference column for a given post), select the name of the candidate/option to whom you give your first preference (using the pull-down selection menu controls).</li>
+		<li>You may also enter, against preference ranks 2, 3 and so on, the names of other candidates/options in the order you wish to vote for them.</li>
+		<li>Continue until you have voted for those candidates/options you wish to vote for, and leave any remaining boxes blank. You are under no obligation to vote for all candidates/options.</li>"
 		. (count ($this->config['electionInfo']) > 1 ? "<li>Repeat this process for each post listed.</li>" : '')
 		. ($ronPresent ? "<li>Some elections may list a candidate named 'RON'. This acronym expands to 'Re-Open Nominations'. You may vote for RON as you would any other candidate. Should RON be 'elected', the position will be re-opened, and will be decided at a subsequent election.</li>" : '') . "
 		<li>The order of your preferences is crucial. Later preferences will only be considered if an earlier preference has qualified for election or has been eliminated from the election due to gaining an insufficient number of votes. </li>
