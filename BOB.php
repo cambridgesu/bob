@@ -15,7 +15,7 @@
  *
  * Token word list Copyright The Internet Society (1998).
  *
- * Version 1.1.3
+ * Version 1.1.4
  *
  * Copyright (C) authors as above
  * 
@@ -76,7 +76,7 @@ $config['officialsUsernames'] = 'abc12 xyz98';	// Space-separated
 # Start and end of the ballot and when the votes can be viewed
 $config['ballotStart'] = '2009-02-13 00:00:00';
 $config['ballotEnd'] = '2009-02-18 00:01:00';
-$config['ballotViewable'] = '2009-02-19 00:01:00';
+$config['paperVotingEnd'] = false;
 
 # Textual information about any randomisation which may have been made
 $config['randomisationInfo'] = false;	// Will have htmlspecialchars applied to it
@@ -175,7 +175,7 @@ $config['countingMethod'] = 'ERS97STV';
 
 
 # The database table should contain these fields, in addition to id as above:
-# title,urlMoreInfo,emailReturningOfficer,emailTech,officialsUsernames,ballotStart,ballotEnd,ballotViewable,randomisationInfo,referendumThresholdPercent,frontPageMessageHtml,afterVoteMessageHtml,voterReceiptDisableable,disableListWhoVoted,adminDuringElectionOK,organisationName,organisationUrl,organisationLogoUrl,headerLocation,footerLocation,additionalVotesCsvDirectory,electionInfo
+# title,urlMoreInfo,emailReturningOfficer,emailTech,officialsUsernames,ballotStart,ballotEnd,paperVotingEnd,randomisationInfo,referendumThresholdPercent,frontPageMessageHtml,afterVoteMessageHtml,voterReceiptDisableable,disableListWhoVoted,adminDuringElectionOK,organisationName,organisationUrl,organisationLogoUrl,headerLocation,footerLocation,additionalVotesCsvDirectory,electionInfo
 # However, urlMoreInfo,referendumThresholdPercent,frontPageMessageHtml,afterVoteMessageHtml,voterReceiptDisableable,disableListWhoVoted,adminDuringElectionOK,headerLocation,footerLocation,additionalVotesCsvDirectory are optional fields which need not be created
 
 
@@ -215,7 +215,7 @@ CREATE TABLE IF NOT EXISTS `instances` (
    `referendumThresholdPercent` int(2) default '10' COMMENT 'Percentage of voters who must cast a vote in a referendum for the referendum to be countable',
    `ballotStart` datetime NOT NULL COMMENT 'Start date/time of the ballot',
    `ballotEnd` datetime NOT NULL COMMENT 'End date/time of the ballot',
-   `ballotViewable` datetime NOT NULL COMMENT 'Date/time when the cast votes can be viewed',
+   `paperVotingEnd` datetime NULL COMMENT 'End time of paper voting, if paper voting is also taking place',
 -- `instanceCompleteTimestamp` datetime default NULL COMMENT 'Timestamp for when the instance (configuration and voters list) is complete',
    PRIMARY KEY  (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
@@ -435,7 +435,7 @@ class BOB
 		'adminDuringElectionOK'			=> false,
 		'ballotStart'					=> NULL,
 		'ballotEnd'						=> NULL,
-		'ballotViewable'				=> NULL,
+		'paperVotingEnd'				=> false,
 		'frontPageMessageHtml'			=> false,
 		'afterVoteMessageHtml'			=> false,
 		'voterReceiptDisableable'			=> false,
@@ -879,26 +879,52 @@ class BOB
 		}
 		
 		# Convert the times to unixtime
-		$timeSettings = array ('ballotStart', 'ballotEnd', 'ballotViewable');
+		$timeSettings = array ('ballotStart', 'ballotEnd', 'paperVotingEnd');
 		foreach ($timeSettings as $timeSetting) {
+			
+			# The paperVotingEnd setting, is not required; only perform the check and conversion to UNIX time below if not false/empty
+			if ($timeSetting == 'paperVotingEnd') {
+				if ($this->config['paperVotingEnd'] == '0000-00-00 00:00:00') {$this->config['paperVotingEnd'] = false;}	// Deal with 32/64 bit compatibility; see: http://stackoverflow.com/questions/141315
+				if (!$this->config['paperVotingEnd']) {
+					$this->config['paperVotingEnd'] = false;	// Explicitly cast false/NULL/0/''/'0'/etc. (see http://php.net/types.comparisons ) as false, to avoid persistence as some other equivalent of false
+					continue;
+				}
+			}
+			
+			# Check formatting as SQLtime string, e.g. '2013-11-06 17:00:00'
 			if (!preg_match ('/^([0-9]{4})-([0-9]{2})-([0-9]{2}) ([0-9]{2}):([0-9]{2}):([0-9]{2})$/D', $this->config[$timeSetting], $matches)) {
-				$this->errors[] = "The '<strong>{$timeSetting}</strong>' setting in the configuration is not formatted correctly; it should be like this: " . date ('Y') . '-01-01 00:00:00';	// date('Y') just used to make pretty documentation but Jan 1st so it's an obviously "example" date
+				$this->errors[] = "The '<strong>{$timeSetting}</strong>' setting in the configuration is not formatted correctly; it should be similar to this: " . date ('Y') . '-01-01 00:00:00';	// date('Y') just used to make pretty documentation but Jan 1st so it's an obviously "example" date
 				return false;
 			}
+			
+			# Convert to UNIX timestamp
 			list ($wholeString, $year, $month, $day, $hour, $minute, $second) = $matches;
 			$this->config[$timeSetting] = mktime ($hour, $minute, $second, $month, $day, $year);
 		}
 		
-		# Validate that ballotStart, ballotEnd and ballotViewable are in that order and that ballotStart and ballotEnd are not equal (though ballotViewable can be at the same time as ballotEnd)
-		if (($this->config['ballotEnd'] <= $this->config['ballotStart']) || ($this->config['ballotViewable'] < $this->config['ballotEnd'])) {
-			$this->errors[] = "The time settings for this ballot in the configuration are wrong. They must be in the order: ballotStart, ballotEnd and ballotViewable.";
+		# Validate that the ballot ends after it opens (and is not the same)
+		if ($this->config['ballotEnd'] <= $this->config['ballotStart']) {
+			$this->errors[] = "The time settings for this ballot in the configuration are wrong; the end time must be after the start time.";
 			return false;
 		}
+		
+		# Validate that any paper voting time is after the ballot start point
+		if ($this->config['paperVotingEnd']) {
+			if ($this->config['paperVotingEnd'] <= $this->config['ballotStart']) {
+				$this->errors[] = "The time settings for this ballot in the configuration are wrong; the close of paper voting time must be after the start time.";
+				return false;
+			}
+		}
+		
+		# Determine the ballotViewable time (is the later of online and paper voting)
+		#!# Rename this variable to ballotsViewable for clarity perhaps
+		$this->ballotViewable = max ($this->config['ballotEnd'], $this->config['paperVotingEnd']);
 		
 		# Create formatted versions of each of the times
 		$this->ballotStartFormatted = date ('H:ia, l, jS F Y', $this->config['ballotStart']);
 		$this->ballotEndFormatted = date ('H:ia, l, jS F Y', $this->config['ballotEnd']);
-		$this->ballotViewableFormatted = date ('H:ia, l, jS F Y', $this->config['ballotViewable']);
+		$this->paperVotingEndFormatted = date ('H:ia, l, jS F Y', $this->config['paperVotingEnd']);
+		$this->ballotViewableFormatted = date ('H:ia, l, jS F Y', $this->ballotViewable);
 		
 		# Create an MD5 hash of BOB itself and a serialised version of the config
 		$this->bobMd5 = md5_file (__FILE__);
@@ -1656,14 +1682,14 @@ class BOB
 	# Function to determine whether have reached the point when the ballot is viewable
 	private function afterBallotView ()
 	{
-		return ($this->config['ballotViewable'] < $this->loadtime);
+		return ($this->ballotViewable < $this->loadtime);
 	}
 	
 	
 	# Function to determine whether we this is a split election (online and paper)
 	private function splitElection ()
 	{
-		return ($this->config['ballotViewable'] > $this->config['ballotEnd']);
+		return (bool) $this->config['paperVotingEnd'];
 	}
 	
 	
@@ -1771,10 +1797,13 @@ class BOB
 			$html .= "</td>\n\t</tr>";
 		}
 		$html .= "\n\t<tr>\n\t\t<td>Username(s) of election official(s):</td>\n\t\t<td><strong>" . htmlspecialchars (str_replace (' ', ', ', $this->config['officialsUsernames'])) . "</strong></td>\n\t</tr>";
-		$html .= "\n\t<tr>\n\t\t<td>Vote opening time:</td>\n\t\t<td>" . $this->ballotStartFormatted . "</td>\n\t</tr>";
-		$html .= "\n\t<tr>\n\t\t<td>Vote closing time:</td>\n\t\t<td>" . $this->ballotEndFormatted . "</td>\n\t</tr>";
-		$html .= "\n\t<tr>\n\t\t<td>List of votes cast viewable at:</td>\n\t\t<td>" . $this->ballotViewableFormatted . "</td>\n\t</tr>";
-		$html .= "\n\t<tr>\n\t\t<td>Total eligible registered online voters:</td>\n\t\t<td>" . number_format ($this->registeredVoters) . ($this->beforeElection ? ' (This may change before the voting opens)' : '') . "</td>\n\t</tr>";
+		$html .= "\n\t<tr>\n\t\t<td>" . ($this->splitElection ? 'Online voting' : 'Vote') . " opening time:</td>\n\t\t<td>" . $this->ballotStartFormatted . "</td>\n\t</tr>";
+		$html .= "\n\t<tr>\n\t\t<td>" . ($this->splitElection ? 'Online voting' : 'Vote') . " closing time:</td>\n\t\t<td>" . $this->ballotEndFormatted . "</td>\n\t</tr>";
+		if ($this->splitElection) {
+			$html .= "\n\t<tr>\n\t\t<td>Paper voting closing time:</td>\n\t\t<td>" . $this->paperVotingEndFormatted . "</td>\n\t</tr>";
+		}
+		$html .= "\n\t<tr>\n\t\t<td>List of votes cast " . ($this->splitElection ? 'online ' : '') . "viewable at:</td>\n\t\t<td>" . $this->ballotViewableFormatted . "</td>\n\t</tr>";
+		$html .= "\n\t<tr>\n\t\t<td>Total eligible registered " . ($this->splitElection ? 'online ' : '') . "voters:</td>\n\t\t<td>" . number_format ($this->registeredVoters) . ($this->beforeElection ? ' (This may change before the voting opens)' : '') . "</td>\n\t</tr>";
 		if ($this->config['randomisationInfo']) {$html .= "\n\t<tr>\n\t\t<td>Randomisation:</td>\n\t\t<td>" . htmlspecialchars ($this->config['randomisationInfo']) . "</td>\n\t</tr>";}
 		$html .= "\n\t<tr>\n\t\t<td>E-mail of Technical Administrator:</td>\n\t\t<td>" . htmlspecialchars ($this->config['emailTech']) . "</td>\n\t</tr>";
 		if (!$this->beforeElection) {	// The security hashes only need to be constant from the opening of the ballot onwards, e.g. the configuration would change before opening if a candidate pulled out
@@ -2592,6 +2621,9 @@ You should not disclose this e-mail or your voting token to others.
 	# Function to check setup of any CSV file(s) for additional votes transcribed from paper
 	private function additionalVotesSetupOk ()
 	{
+		# Return no problems if split (online+paper) voting not required
+		if (!$this->splitElection) {return true;}
+		
 		# Return no problems if functionality not enabled
 		if (!$this->config['additionalVotesCsvDirectory']) {return true;}
 		

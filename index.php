@@ -30,7 +30,7 @@ $config['officialsUsernames'] = 'abc12 xyz98';	// Space-separated
 # Start and end of the ballot and when the votes can be viewed
 $config['ballotStart'] = '2009-02-13 00:00:00';
 $config['ballotEnd'] = '2009-02-18 00:01:00';
-$config['ballotViewable'] = '2009-02-19 00:01:00';
+$config['paperVotingEnd'] = false;
 
 # Textual information about any randomisation which may have been made
 $config['randomisationInfo'] = false;	// Will have htmlspecialchars applied to it
