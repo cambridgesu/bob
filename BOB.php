@@ -879,14 +879,14 @@ class BOB
 		}
 		
 		# Convert the times to unixtime
-		$times = array ('ballotStart', 'ballotEnd', 'ballotViewable');
-		foreach ($times as $time) {
-			if (!preg_match ('/^([0-9]{4})-([0-9]{2})-([0-9]{2}) ([0-9]{2}):([0-9]{2}):([0-9]{2})$/D', $this->config[$time], $matches)) {
-				$this->errors[] = "The '<strong>{$time}</strong>' setting in the configuration is not formatted correctly; it should be like this: " . date ('Y') . '-01-01 00:00:00';	// date('Y') just used to make pretty documentation but Jan 1st so it's an obviously "example" date
+		$timeSettings = array ('ballotStart', 'ballotEnd', 'ballotViewable');
+		foreach ($timeSettings as $timeSetting) {
+			if (!preg_match ('/^([0-9]{4})-([0-9]{2})-([0-9]{2}) ([0-9]{2}):([0-9]{2}):([0-9]{2})$/D', $this->config[$timeSetting], $matches)) {
+				$this->errors[] = "The '<strong>{$timeSetting}</strong>' setting in the configuration is not formatted correctly; it should be like this: " . date ('Y') . '-01-01 00:00:00';	// date('Y') just used to make pretty documentation but Jan 1st so it's an obviously "example" date
 				return false;
 			}
 			list ($wholeString, $year, $month, $day, $hour, $minute, $second) = $matches;
-			$this->config[$time] = mktime ($hour, $minute, $second, $month, $day, $year);
+			$this->config[$timeSetting] = mktime ($hour, $minute, $second, $month, $day, $year);
 		}
 		
 		# Validate that ballotStart, ballotEnd and ballotViewable are in that order and that ballotStart and ballotEnd are not equal (though ballotViewable can be at the same time as ballotEnd)
