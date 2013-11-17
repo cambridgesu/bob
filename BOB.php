@@ -15,7 +15,7 @@
  *
  * Token word list Copyright The Internet Society (1998).
  *
- * Version 1.1.6
+ * Version 1.1.7
  *
  * Copyright (C) authors as above
  * 
@@ -709,6 +709,11 @@ class BOB
 			$actionRequiresElectionOfficial = $this->actions[$action]['administrator'];
 			$userAuthorised = ($this->userIsElectionOfficial || !$actionRequiresElectionOfficial);
 			if ($userAuthorised) {
+				
+				# Reassure admins about admin-only pages
+				if ($this->userIsElectionOfficial && $actionRequiresElectionOfficial) {
+					echo "\n<p><em>Note: You can only access this page because you are an election official. It is not available to ordinary voters.</em></p>";
+				}
 				
 				# Run the (now validated and authorised) function
 				$this->$action ();
