@@ -1817,11 +1817,9 @@ class BOB
 		$html .= "\n<h2>About the voting system</h2>";
 		$html .= "\n<p>This system enables votes for a ballot to be cast online and securely and anonymously communicated to the Returning Officer. The Returning Officer will be able to see who has voted but will not be able to tell who has cast which votes.</p>";
 		$html .= "\n<p>When you have successfully placed your vote, you will be e-mailed a sequence of random-looking short words - your \"voting token\". This system does not store the connection between your voting token and your identity, however it does store your voting token in a database, and e-mails it to a mailbox for audit purposes. When polls have closed, the list of all the votes cast will be made available - because only you will know your voting token, you will be able to check that your vote was correctly included.</p>";
-		$html .= "\n<p>Disclaimer: The (extremely minimal) software behind this voting system has been checked independently, and has been agreed to be a system designed to avoid and detect voting irregularities.
-						The service is hosted on a computer that is not under the direct administrative control of the organisation running the election.
-						Evidence can be acquired from the external System Administrators &lt;{$this->config['emailTech']}&gt; that the software is not modified during the election. 
-						If you do not trust this system, you are advised to contact the Returning Officer.
-						As stated in the GPL license, this software comes with no guarantees. Feel free to examine the code of the PHP class <a href=\"./?viewsource\" target=\"_blank\" title=\"[Link opens in a new window]\">BOB.php</a> [link opens in a new window], which has MD5 sum <tt>" . $this->bobMd5 . "</tt>, that drives the various pages.</p>";
+		$html .= "\n<p>Disclaimer: The software behind this voting system has been checked independently, and acknowledged as a system that should detect and avoid voting irregularities. However, as stated in the GPL license, it comes with no guarantees.
+			You can examine the code of the PHP class <a href=\"./?viewsource\" target=\"_blank\" title=\"[Link opens in a new window]\">BOB.php</a> [link opens in a new window], which has MD5 sum <tt>" . $this->bobMd5 . "</tt>, that drives the various pages.
+			If you have any questions or concerns about the system, please contact the external System Administrators &lt;{$this->config['emailTech']}&gt; or the Returning Officer.</p>";
 		
 		# Show the HTML
 		echo $html;
