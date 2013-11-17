@@ -2306,7 +2306,6 @@ class BOB
 		
 		// Generate token; this is done as late as possible to minimise the chances of a race condition before the INSERT
 		if (!$token = $this->generateUniqueToken ()) {
-			$this->doRollback ();
 			return $this->error ('Token could not be generated. Please resubmit.');	// Safe to end after a BEGIN WORK: MySQL documentation says "If a client connection drops, the server releases table locks held by the client."
 		}
 		
