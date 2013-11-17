@@ -1741,6 +1741,11 @@ class BOB
 		$html .= "\n\t<ul class=\"actions left\">";
 		if ($this->beforeElection) {
 			$html .= "\n\t\t" . '<li><strong>Current status:</strong> The ballot has not yet opened.</li>';
+			if ($this->userIsRegisteredVoter) {
+				$html .= "\n\t\t" . "<p class=\"electoralroll\">You (<strong>{$this->username}</strong>) <strong>are</strong> on the electoral roll.</p>";
+			} else {
+				$html .= "\n\t\t" . "<p class=\"electoralroll\">No, you (<strong>{$this->username}</strong>) are <strong>not</strong> on the electoral roll.<br />If you think you should be, please contact the election official(s) listed below.</p>";
+			}
 		}
 		if ($this->duringElection) {
 			$html .= "\n\t\t" . '<li><strong>Current status:</strong> Voting is now open for the above ballot.</li>';
@@ -1766,16 +1771,6 @@ class BOB
 		}
 		$html .= "\n\t</ul>";
 		$html .= "\n</div>";
-		
-		# Status of user on electoral roll
-		if (!$this->afterBallotView) {
-			$html .= "\n<h2>Are you on the electoral roll?</h2>";
-			if ($this->userIsRegisteredVoter) {
-				$html .= "\n\t\t" . "<p class=\"electoralroll\">Yes, you (<strong>{$this->username}</strong>) <strong>are</strong> on the electoral roll.</p>";
-			} else {
-				$html .= "\n\t\t" . "<p class=\"electoralroll\">No, you (<strong>{$this->username}</strong>) are <strong>not</strong> on the electoral roll.<br />If you think you should be, please contact the election official(s) listed below.</p>";
-			}
-		}
 		
 		# Link to admin page for election officials
 		if ($this->userIsElectionOfficial) {
