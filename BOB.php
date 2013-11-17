@@ -15,7 +15,7 @@
  *
  * Token word list Copyright The Internet Society (1998).
  *
- * Version 1.1.5
+ * Version 1.1.6
  *
  * Copyright (C) authors as above
  * 
@@ -540,7 +540,6 @@ class BOB
 	private $additionalVotePrefix = 'additionalvote';	// Prefix for additional votes
 	private $additionalVotesFile = false;		// Additional votes file - filename in use (if any)
 	private $additionalVotesFileFinal = false;	// Additional votes file - whether the data is finalised
-	private $reOpenNominationsLabels = array ('Re-Open Nominations (RON)', 'Re-Open Nominations', 'RON');	// Exact labels (case-sensitive) used to match RON
 	
 	# Define what a referendum looks like in terms of the available candidates
 	private $referendumCandidates = array ('0' => '(blank)', '1' => 'Yes', '2' => 'No');
@@ -2086,7 +2085,8 @@ class BOB
 		
 		// Show the ballot page if not posted or problems found, then end
 		if (empty ($_POST) || $problems) {
-			$this->ballotPage($this->config['electionInfo'], $viewOnly);
+			#!# This might need to called statically under PHP 5.5; not yet tested
+			$this->ballotPage($this->config, $viewOnly);
 			return;
 		}
 		
@@ -2103,23 +2103,23 @@ class BOB
   
   
   // Statically-callable method of showing the ballot page, for use by the separate bobgui program for viewing a ballot setup
-  public function viewBallotPageExternal ($electionInfo, $submitTo) {
-  	self::ballotPage ($electionInfo, $viewOnly = true, $submitTo);
+  public function viewBallotPageExternal ($config, $submitTo) {
+  	self::ballotPage ($config, $viewOnly = true, $submitTo);
   }
 	
 	
 	# Function to determine if this election contains only people (i.e. names in "SURNAME, Forename" format), or whether it contains non-person questions (e.g. referenda)
-	private function onlyPeople ()
+	private function onlyPeople ($electionInfo, $reOpenNominationsLabels)
 	{
 		# Loop through the election info
-		foreach ($this->config['electionInfo'] as $electionIndex => $candidates) {
+		foreach ($electionInfo as $electionIndex => $candidates) {
 			array_shift ($candidates);      // Skip label
 			
 			# Check each candidate
 			foreach ($candidates as $candidate) {
 				
 				# Skip checks if 'RON'
-				if (in_array ($candidate, $this->reOpenNominationsLabels, true)) {continue;}
+				if (in_array ($candidate, $reOpenNominationsLabels, true)) {continue;}
 				
 				# Check for "string, string" format
 				if (!preg_match ('/^([^,]+), (.+)$/i', $candidate, $matches)) {
@@ -2140,15 +2140,18 @@ class BOB
 	}
   
   
-  // Ballot page
-  private function ballotPage($electionInfo, $viewOnly = false, $submitTo = false){
+  // Ballot page; can be run in an embeddable (external) static context also
+  private function ballotPage($config, $viewOnly = false, $submitTo = false){
     
+	# Define labels (case-sensitive) used to match RON
+	$reOpenNominationsLabels = array ('Re-Open Nominations (RON)', 'Re-Open Nominations', 'RON');
+	
 	# Determine if RON is present
 	$ronPresent = false;
-	foreach ($electionInfo as $electionIndex => $candidates) {
+	foreach ($config['electionInfo'] as $electionIndex => $candidates) {
 		array_shift ($candidates);	// Skip label
 		foreach ($candidates as $candidate) {
-			if (in_array ($candidate, $this->reOpenNominationsLabels, true)) {
+			if (in_array ($candidate, $reOpenNominationsLabels, true)) {
 				$ronPresent = true;
 				break;
 			}
@@ -2156,19 +2159,19 @@ class BOB
 	}
 	
 	# Determine if this election contains only people (i.e. names in "SURNAME, Forename" format), or whether it contains non-person questions (e.g. referenda)
-	$onlyPeople = $this->onlyPeople ();
+	$onlyPeople = self::onlyPeople ($config['electionInfo'], $reOpenNominationsLabels);	// Has to be called statically, as ballotPage may be run statically
 	$choiceDescription = ($onlyPeople ? 'candidate' : 'candidate/option');
 	$choiceDescriptionPlural = ($onlyPeople ? 'candidates' : 'candidates/options');
 	
 	# Voting instructions
 	echo "
 	<h2>How to vote</h2>
-	<p>The voting in this ballot uses the Single Transferable Vote system. Please see the published rules governing the voting system for " . htmlspecialchars ($this->config['organisationName']) . " ballots.</p>
+	<p>The voting in this ballot uses the Single Transferable Vote system. Please see the published rules governing the voting system for " . htmlspecialchars ($config['organisationName']) . " ballots.</p>
 	<ul>
 		<li>Next to number 1 (in the preference column for a given post), select the name of the {$choiceDescription} to whom you give your first preference (using the pull-down selection menu controls).</li>
 		<li>You may also enter, against preference ranks 2, 3 and so on, the names of other {$choiceDescriptionPlural} in the order you wish to vote for them.</li>
 		<li>Continue until you have voted for those {$choiceDescriptionPlural} you wish to vote for, and leave any remaining boxes blank. You are under no obligation to vote for all {$choiceDescriptionPlural}.</li>"
-		. (count ($this->config['electionInfo']) > 1 ? "<li>Repeat this process for each post listed.</li>" : '')
+		. (count ($config['electionInfo']) > 1 ? "<li>Repeat this process for each post listed.</li>" : '')
 		. ($ronPresent ? "<li>Some elections may list a candidate named 'RON'. This acronym expands to 'Re-Open Nominations'. You may vote for RON as you would any other candidate. Should RON be 'elected', the position will be re-opened, and will be decided at a subsequent election.</li>" : '') . "
 		<li>The order of your preferences is crucial. A later preference can be considered only if an earlier preference has received sufficient votes to qualify for election or has been excluded because of insufficient support. Under no circumstances can a later preference count against an earlier preference.</li>
 		<li>When you have completed this form CHECK IT.</li>
@@ -2181,7 +2184,7 @@ class BOB
 	echo '<form action="' . ($submitTo ? $submitTo : ($viewOnly ? './?admin_viewform' : './?vote')) . '" method="post">',"\n\n";
 	
 	$i = 0;	// Start a count of vote groups
-	foreach ($electionInfo as $options) {	// Loop through each vote group
+	foreach ($config['electionInfo'] as $options) {	// Loop through each vote group
 		
 		$i++;	// Advance the vote group counter
 		if (!$options) {continue;}	// If the array is empty, move on
@@ -2224,8 +2227,8 @@ class BOB
 	echo '
 		<p><font color="red"><strong>Please double-check your choices before submitting your vote!</strong></font> Due to the anonymity built into this voting system, it is not possible to correlate your response after you vote.</p>
 		<p><input type="checkbox" name="confirmvote" id="confirmvote" /><label for="confirmvote"> I have checked my vote.</label></p>
-		<p>After you click "Cast my vote", your vote will be passed anonymously to the Returning Officer. ' . ($this->config['voterReceiptDisableable'] ? 'If specified below, you' : 'You') . ' will receive a blind copy by e-mail. On the next page your vote will be displayed, by way of confirmation. These will allow you to check that we have recorded your vote correctly by confirming to yourself the presence of your vote on the listing that will be visible when voting has closed (and which is used to calculate the results). Any queries should be directed to the Returning Officer.</p>
-		' . ($this->config['voterReceiptDisableable'] ? '<p><input type="checkbox" name="voterreceipt" id="voterreceipt"' . ($this->voterReceipt () ? ' checked="checked"': '') . ' /><label for="voterreceipt"> Send me a receipt to ' . $this->username . '@cam.ac.uk showing my vote token and votes.</label><br />(Untick this option if your mailbox is shared (i.e. so others could see your vote) or this address is not enabled or is over-quota (because bounces could be seen by the Returning Officer).</p>' : '') . '
+		<p>After you click "Cast my vote", your vote will be passed anonymously to the Returning Officer. ' . ($config['voterReceiptDisableable'] ? 'If specified below, you' : 'You') . ' will receive a blind copy by e-mail. On the next page your vote will be displayed, by way of confirmation. These will allow you to check that we have recorded your vote correctly by confirming to yourself the presence of your vote on the listing that will be visible when voting has closed (and which is used to calculate the results). Any queries should be directed to the Returning Officer.</p>
+		' . ($config['voterReceiptDisableable'] ? '<p><input type="checkbox" name="voterreceipt" id="voterreceipt"' . (self::voterReceipt ($config['voterReceiptDisableable']) ? ' checked="checked"': '') . ' /><label for="voterreceipt"> Send me a receipt to ' . (isSet ($this->username) ? $this->username : '[username]') . '@cam.ac.uk showing my vote token and votes.</label><br />(Untick this option if your mailbox is shared (i.e. so others could see your vote) or this address is not enabled or is over-quota (because bounces could be seen by the Returning Officer).</p>' : '') . '
 		<p><input value="Cast my vote" type="submit" /></p>
 	</form>
 	</div>
@@ -2234,10 +2237,10 @@ class BOB
 	
 	
 	# Function to determine whether a voter receipt is to be sent
-	private function voterReceipt ()
+	private function voterReceipt ($voterReceiptDisableable)
 	{
 		# If the config states that the voter receipt is not disableable, it should be sent
-		if (!$this->config['voterReceiptDisableable']) {return true;}
+		if (!$voterReceiptDisableable) {return true;}
 		
 		# If the form is not posted, by default, a receipt is enabled (so the checkbox will be checked)
 		if (!$_POST) {return true;}
@@ -2279,7 +2282,7 @@ class BOB
 	private function voteWFinternal ()
 	{
 		# Determine whether the voter will receive the vote receipt
-		$voterReceipt = $this->voterReceipt ();
+		$voterReceipt = $this->voterReceipt ($this->config['voterReceiptDisableable']);
 		
 		// Create a string of column names and corresponding column values by looping through the configuration array and looking up the (now-validated) value in the POST array
 		$coln  = '';
