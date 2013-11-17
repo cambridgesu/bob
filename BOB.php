@@ -2297,15 +2297,15 @@ class BOB
 			}
 		}
 		
-		echo '<p>Recording your vote ...';
-		
 		// Start transaction.
 		if (!mysql_query ('BEGIN WORK;')) {
+			echo "\n<p>Recording your vote ...</p>";
 			return $this->error ('Failed to start database transaction.');
 		}
 		
 		// Generate token; this is done as late as possible to minimise the chances of a race condition before the INSERT
 		if (!$token = $this->generateUniqueToken ()) {
+			echo "\n<p>Recording your vote ...</p>";
 			return $this->error ('Token could not be generated. Please resubmit.');	// Safe to end after a BEGIN WORK: MySQL documentation says "If a client connection drops, the server releases table locks held by the client."
 		}
 		
@@ -2315,26 +2315,27 @@ class BOB
 		
 		// Record data from the ballot HTML form along with random token.
 		if (!mysql_query ("INSERT INTO `{$this->votesTable}` ({$coln}) VALUES ({$colv});") or mysql_affected_rows() != 1) {
+			echo "\n<p>Recording your vote ...</p>";
 			$this->doRollback ();
 			return $this->error ('Database vote insert failure.');
 		}
 		
 		// Modify the voter table to indicate this vote has been cast
 		if (!mysql_query ("UPDATE `{$this->voterTable}` SET voted = '1' WHERE username='{$this->username}' AND voted = '0';") or mysql_affected_rows () != 1) {
+			echo "\n<p>Recording your vote ...</p>";
 			$this->doRollback ();
 			return $this->error ('Recording voter as having voted failed. As such, the vote itself has not been stored either.');
 		}
 		
 		# Commit the transaction
 		if (!mysql_query ('COMMIT;')) {
+			echo "\n<p>Recording your vote ...</p>";
 			$this->doRollback ();
 			return $this->error ('Transaction failed to commit.');
 		}
 		
 		// Write of ballot to database was OK.
-		echo " done.</p>";
-		
-		// Update of voter having voted was successful
+		echo "\n<p>Recording your vote ... done.</p>";
 		echo "\n<p>Updating your status as having voted ... done.</p>";
 		echo "\n<p>Our database indicates that it has successfully recorded your vote and, separately, that you have voted. Details are below.</p>";
 		echo "\n<p><strong>Thank you for voting. <a href=\"./\">Return to the front page.</a></strong></p>";
