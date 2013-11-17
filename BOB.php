@@ -2111,6 +2111,38 @@ class BOB
   public function viewBallotPageExternal ($electionInfo, $submitTo) {
   	self::ballotPage ($electionInfo, $viewOnly = true, $submitTo);
   }
+	
+	
+	# Function to determine if this election contains only people (i.e. names in "SURNAME, Forename" format), or whether it contains non-person questions (e.g. referenda)
+	private function onlyPeople ()
+	{
+		# Loop through the election info
+		foreach ($this->config['electionInfo'] as $electionIndex => $candidates) {
+			array_shift ($candidates);      // Skip label
+			
+			# Check each candidate
+			foreach ($candidates as $candidate) {
+				
+				# Skip checks if 'RON'
+				if (in_array ($candidate, $this->reOpenNominationsLabels, true)) {continue;}
+				
+				# Check for "string, string" format
+				if (!preg_match ('/^([^,]+), (.+)$/i', $candidate, $matches)) {
+					return false;
+				}
+				
+				# Check first string is upper-case
+				list ($complete, $surname, $forename) = $matches;
+				$surnameUppercased = utf8_encode (strtoupper (utf8_decode ($surname)));        // i.e. mb_strtoupper
+				if ($surname != $surnameUppercased) {
+					return false;
+				}
+			}
+		}
+		
+		# All positions confirmed as "SURNAME, Forename" format
+		return true;
+	}
   
   
   // Ballot page
@@ -2128,14 +2160,19 @@ class BOB
 		}
 	}
 	
+	# Determine if this election contains only people (i.e. names in "SURNAME, Forename" format), or whether it contains non-person questions (e.g. referenda)
+	$onlyPeople = $this->onlyPeople ();
+	$choiceDescription = ($onlyPeople ? 'candidate' : 'candidate/option');
+	$choiceDescriptionPlural = ($onlyPeople ? 'candidates' : 'candidates/options');
+	
 	# Voting instructions
 	echo "
 	<h2>How to vote</h2>
 	<p>The voting in this ballot uses the Single Transferable Vote system. Please see the published rules governing the voting system for " . htmlspecialchars ($this->config['organisationName']) . " ballots.</p>
 	<ul>
-		<li>Next to number 1 (in the preference column for a given post), select the name of the candidate/option to whom you give your first preference (using the pull-down selection menu controls).</li>
-		<li>You may also enter, against preference ranks 2, 3 and so on, the names of other candidates/options in the order you wish to vote for them.</li>
-		<li>Continue until you have voted for those candidates/options you wish to vote for, and leave any remaining boxes blank. You are under no obligation to vote for all candidates/options.</li>"
+		<li>Next to number 1 (in the preference column for a given post), select the name of the {$choiceDescription} to whom you give your first preference (using the pull-down selection menu controls).</li>
+		<li>You may also enter, against preference ranks 2, 3 and so on, the names of other {$choiceDescriptionPlural} in the order you wish to vote for them.</li>
+		<li>Continue until you have voted for those {$choiceDescriptionPlural} you wish to vote for, and leave any remaining boxes blank. You are under no obligation to vote for all {$choiceDescriptionPlural}.</li>"
 		. (count ($this->config['electionInfo']) > 1 ? "<li>Repeat this process for each post listed.</li>" : '')
 		. ($ronPresent ? "<li>Some elections may list a candidate named 'RON'. This acronym expands to 'Re-Open Nominations'. You may vote for RON as you would any other candidate. Should RON be 'elected', the position will be re-opened, and will be decided at a subsequent election.</li>" : '') . "
 		<li>The order of your preferences is crucial. A later preference can be considered only if an earlier preference has received sufficient votes to qualify for election or has been excluded because of insufficient support. Under no circumstances can a later preference count against an earlier preference.</li>
@@ -2172,8 +2209,8 @@ class BOB
 		
 		// Create the HTML, creating as many boxes as requested
 		echo "\n\n<table class=\"vote v{$i}\">\n";
-		if (count ($options) > 11) {echo "<p class=\"comment\">Note: there are " . (count ($options) - 1) . " candidates standing in this election. Your browser may require you to scroll to see all.</p>";}	// IE6/Win in Classic Theme, i.e. not XP standard, only displays 11 options at once
-		if (!$isReferendum) {echo "\t\t<tr>\n\t\t\t<th>Preference</th>\n\t\t\t<th>Candidate/option</th>\n\t\t</tr>\n";}
+		if (count ($options) > 11) {echo "<p class=\"comment\">Note: there are " . (count ($options) - 1) . " {$choiceDescriptionPlural} standing in this election. Your browser may require you to scroll to see all.</p>";}	// IE6/Win in Classic Theme, i.e. not XP standard, only displays 11 options at once
+		if (!$isReferendum) {echo "\t\t<tr>\n\t\t\t<th>Preference</th>\n\t\t\t<th>" . ucfirst ($choiceDescription) . "</th>\n\t\t</tr>\n";}
 		for ($box = 1; $box <= $boxes; $box++) {
 			
 			// Determine what option has been selected for this box, if any
