@@ -1062,6 +1062,7 @@ class BOB
 			ul.explanation li {list-style: none; margin-left: 10px; padding-left: 10px;}
 			p.winner {color: #603; font-weight: bold; font-size: 1.2em; background-image: url(/images/icons/bullet_go.png); background-position: 5px 1px; background-repeat: no-repeat; padding-left: 28px;}
 			p.warning {color: red;}
+			p.success {background-image: url(/images/icons/tick.png); background-repeat: no-repeat; padding-left: 22px;}
 
 			div.graybox {border: 1px solid #ddd; padding: 10px 15px; margin: 0 10px 10px 0; background-color: #fcfcfc; overflow: hidden; /* overflow prevents floats not being enclosed - see http://gtwebdev.com/workshop/floats/enclosing-floats.php */}
 			div.graybox:hover {background-color: #fafafa; border-color: #aaa;}
@@ -2334,40 +2335,43 @@ class BOB
 			return $this->error ('Transaction failed to commit.');
 		}
 		
+		# Start the narration HTML
+		$html = '';
+		
 		// Write of ballot to database was OK.
-		echo "\n<p>Recording your vote ... done.</p>";
-		echo "\n<p>Updating your status as having voted ... done.</p>";
-		echo "\n<p>Our database indicates that it has successfully recorded your vote and, separately, that you have voted. Details are below.</p>";
-		echo "\n<p><strong>Thank you for voting. <a href=\"./\">Return to the front page.</a></strong></p>";
-		if ($this->config['afterVoteMessageHtml']) {
-			echo "\n" . "<div class=\"warningbox\">";
-			echo "\n" . $this->config['afterVoteMessageHtml'];	// It is assumed that the process which generates this setting has already sanitised it for inappropriate HTML
-			echo "\n" . "</div>";
-		}
-		echo "\n<p>We will now attempt to read back your vote from our database, and e-mail it to the returning officer" . ($voterReceipt ? ", blind-carbon-copied (BCC) to your @cam address" : '') . ".</p>";
-		echo "\n<p>In the highly unusual case that there is a failure somewhere in the remainder of this voting process, you should keep a record of your proof-of-voting token '<strong>{$token}</strong>' and use it to check your vote really was recorded correctly when the count sheet is posted up after voting has closed.</p>";
+		$html .= "\n<p>Our database indicates that it has successfully recorded your vote and, separately, that you have voted.</p>";
+		$html .= "\n<p>We will now attempt to read back your vote from our database, and e-mail it to the returning officer" . ($voterReceipt ? ", blind-carbon-copied (BCC) to your @cam address" : '') . ".</p>";
+		$html .= "\n<p>In the highly unusual case that there is a failure somewhere in the remainder of this voting process, you should keep a record of your proof-of-voting token '<strong>{$token}</strong>' and use it to check your vote really was recorded correctly when the count sheet is posted up after voting has closed.</p>";
 		
 		// Create e-mail body containing ballot information
 		if (!$result = mysql_query ("SELECT * FROM `{$this->votesTable}` WHERE token='$token';")) {
-			return $this->error ('Vote read-back failed (1).');
+			$html .= "\n<p><strong>ERROR:</strong> Vote read-back failed (1).</p>";
+			echo $html;
+			return false;
 		}
 		if (!$row = mysql_fetch_assoc ($result)) {
-			return $this->error ("Vote read-back failed (2).");
+			$html .= "\n<p><strong>ERROR:</strong> Vote read-back failed (2).</p>";
+			echo $html;
+			return false;
 		}
 		
 		# Compile the message start
 		$message  = "Below you will find a record of each of the selections you made on the ballot web-page in order. Each ballot choice is represented in a computer-parsable representation, with an equivalent verbal description to the right of each equals sign.";
 		$message .= "\n\nYour voting token is '{$token}'.";
-		$message .= "\n\nYou should not disclose this e-mail or your voting token to others.";
+		$message .= "\n\nYou should not disclose this e-mail or your voting token to others.\n\n";
 		$message = wordwrap ($message);
 		
 		foreach ($row as $k => $v){
 			if ($k == 'token') {continue;}	// Skip the token line
 			if (is_numeric($k) || !is_numeric ($v)){
-				return $this->error ('MySQL result is giving incorrect field names/values (1).');
+				$html .= "\n<p><strong>ERROR:</strong> MySQL result is giving incorrect field names/values (1).</p>";
+				echo $html;
+				return false;
 			}
 			if (!preg_match ('/\Av(\d+)p(\d+)\z/', $k, $matches)) {
-				return $this->error ('MySQL result is giving incorrect field names/values (2).');
+				$html .= "\n<p><strong>ERROR:</strong> MySQL result is giving incorrect field names/values (2).</p>";
+				echo $html;
+				return false;
 			}
 			$thisPosition = $this->config['electionInfo'][$matches[1]-1][0];
 			$thisPreference = $matches[2];
@@ -2403,15 +2407,14 @@ class BOB
 		$message .= "\n\n\n--- END OF E-MAIL ---\n";
 		
 		# Continue the narration
-		echo "\n<p>" . ($voterReceipt ? 'If you do not receive a confirmation e-mail containing the text in the box below within a minute or two, we' : 'We') . " recommend that you save or print this webpage as an alternative personal record of your vote.</p>";
-		echo "\n<p>You should not disclose this e-mail or your voting token to others.</p>";
-		echo "\n<p><strong>When you have finished reading this page, including text below, you should ideally <a href=\"{$this->logoutLocation}\">logout</a> then close your browser.</strong></p>";
-		echo "\n<div class=\"votemsg\">";
-		echo "\n<pre>";
-		echo "\n" . $message;
-		echo "\n</pre>";
-		echo "\n</div>";
-		echo "\n<p>E-mailing your vote to the mailbox &lt;{$this->config['emailReturningOfficer']}&gt;" . ($voterReceipt ? " and blind-carbon-copying {$this->username}@cam.ac.uk" : '') . ' ...';
+		$html .= "\n<p>" . ($voterReceipt ? 'If you do not receive a confirmation e-mail containing the text in the box below within a minute or two, we' : 'We') . " recommend that you save or print this webpage as an alternative personal record of your vote.</p>";
+		$html .= "\n<p>You should not disclose this e-mail or your voting token to others.</p>";
+		$html .= "\n<div class=\"votemsg\">";
+		$html .= "\n<pre>";
+		$html .= "\n" . $message;
+		$html .= "\n</pre>";
+		$html .= "\n</div>";
+		$html .= "\n<p>E-mailing your vote to the mailbox &lt;{$this->config['emailReturningOfficer']}&gt;" . ($voterReceipt ? " and blind-carbon-copying {$this->username}@cam.ac.uk" : '') . ' ...';
 		
 		# Send the e-mail and confirm
 		#!# NB Mail domain of @cam.ac.uk is currently hard-coded
@@ -2421,11 +2424,29 @@ class BOB
 			$extraHeaders .= "BCC: {$this->username}@cam.ac.uk\r\n";
 		}
 		if (!mail ($this->config['emailReturningOfficer'], $subject, $message, $extraHeaders)) {
-			return ($this->error ('Enqueue voting confirmation e-mail failed.'));
+			$html .= "\n<p><strong>ERROR:</strong> Enqueue voting confirmation e-mail failed.</p>";
+			echo $html;
+			return false;
 		}
-		echo "\n" . " Voting confirmation e-mail successfully enqueued.</p>";
-		echo "\n<p><strong>Voting process has successfully completed.</strong></p>";
+		$html .= "\n" . " Voting confirmation e-mail successfully enqueued.</p>";
+		$html .= "\n<p><strong>Voting process has successfully completed.</strong></p>";
 		
+		# Define a confirmation summary box
+		$summaryHtml  = "\n<div class=\"graybox\">";
+		$summaryHtml .= "\n<p class=\"success\"><strong>Your vote has been succesfully recorded; thank you for voting.</strong></p>";
+		$summaryHtml .= "\n\n<p>Your voting token is '{$token}'" . ($voterReceipt ? ', which has been e-mailed to you as below.' : '. We recommend you print this page so you have a note of this.') . '</p>';
+		if ($this->config['afterVoteMessageHtml']) {
+			$summaryHtml .= "\n" . $this->config['afterVoteMessageHtml'];	// It is assumed that the process which generates this setting has already sanitised it for inappropriate HTML
+		}
+		$summaryHtml .= "\n<p>Please now <a href=\"{$this->logoutLocation}\">logout</a> then close your browser.</p>";
+		$summaryHtml .= "\n</div>";
+		$summaryHtml .= "\n<h2>Fuller details</h2>";
+		
+		# Show the HTML
+		echo $summaryHtml;
+		echo $html;
+		
+		# Signal success
 		return true;
 	}
 	
