@@ -2131,7 +2131,7 @@ class BOB
 	# Voting instructions
 	echo "
 	<h2>How to vote</h2>
-	<p>Voting is according to the published Single Transferable Vote rules.</p>
+	<p>The voting in this ballot uses the Single Transferable Vote system. Please see the published rules governing the voting system for " . htmlspecialchars ($this->config['organisationName']) . " ballots.</p>
 	<ul>
 		<li>Next to number 1 (in the preference column for a given post), select the name of the candidate/option to whom you give your first preference (using the pull-down selection menu controls).</li>
 		<li>You may also enter, against preference ranks 2, 3 and so on, the names of other candidates/options in the order you wish to vote for them.</li>
