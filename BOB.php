@@ -15,7 +15,7 @@
  *
  * Token word list Copyright The Internet Society (1998).
  *
- * Version 1.1.4
+ * Version 1.1.5
  *
  * Copyright (C) authors as above
  * 
@@ -1762,7 +1762,7 @@ class BOB
 			$html .= "\n\t\t" . "<li class=\"spaced showvotes\"><a href=\"./?showvotes\">View list of votes cast" . ($this->splitElection ? ' electronically' : '') . ' (total ' . number_format ($this->totalVoted) . ')</a></li>';
 		}
 		if ($this->duringElection || ($this->splitElection && $this->afterElection && !$this->afterBallotView)) {
-			$html .= "\n\t\t" . '<li>You will be able to view the list of votes cast here at<br />' . $this->ballotViewableFormatted . '.</li>';
+			$html .= "\n\t\t" . '<li>You will be able to view the list of votes cast (which are used to calculate the results) here at<br />' . $this->ballotViewableFormatted . '.</li>';
 		}
 		$html .= "\n\t</ul>";
 		$html .= "\n</div>";
