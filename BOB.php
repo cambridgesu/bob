@@ -1756,7 +1756,11 @@ class BOB
 					$html .= "\n\t\t" . '<li class="vote"><a href="./?vote">Cast your vote</a></li>';
 				}
 			} else {
-				$html .= "\n\t\t" . '<li>You are not on the electoral roll so cannot vote. If you think you should be, please contact the election official(s) listed below.</li>';
+				if ($this->splitElection) {
+					$html .= "\n\t\t" . '<li>You are not on the online electoral roll so cannot vote online. If you think you should be able to vote online, please contact the election official(s) listed below.</li>';
+				} else {
+					$html .= "\n\t\t" . '<li>You are not on the electoral roll so cannot vote. If you think you should be, please contact the election official(s) listed below.</li>';
+				}
 			}
 		}
 		if ($this->afterElection) {
