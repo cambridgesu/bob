@@ -2276,153 +2276,159 @@ class BOB
   }
   
   
-  // internal voting workflow
-  private function voteWFinternal(&$openTrans)
-  {
-	# Determine whether the voter will receive the vote receipt
-	$voterReceipt = $this->voterReceipt ();
-	
-	// Create a string of column names and corresponding column values by looping through the configuration array and looking up the (now-validated) value in the POST array
-	$coln  = '';
-	$colv  = '';
-	foreach ($this->config['electionInfo'] as $voteSet => $candidates) {
-		$voteSet = $voteSet + 1;	// Adjust the array indexing - the generated <select> boxes start at [1] not [0]
+	# Internal voting workflow
+	private function voteWFinternal (&$openTrans)
+	{
+		# Determine whether the voter will receive the vote receipt
+		$voterReceipt = $this->voterReceipt ();
 		
-		// Loop through each candidate specified in the config file
-		foreach ($candidates as $preferenceNumber => $candidate) {
+		// Create a string of column names and corresponding column values by looping through the configuration array and looking up the (now-validated) value in the POST array
+		$coln  = '';
+		$colv  = '';
+		foreach ($this->config['electionInfo'] as $voteSet => $candidates) {
+			$voteSet = $voteSet + 1;	// Adjust the array indexing - the generated <select> boxes start at [1] not [0]
 			
-			// Skip the first 'candidate' as that is actually a heading
-			if ($preferenceNumber == 0) {continue;}
-			
-			$coln .= ",v{$voteSet}p{$preferenceNumber}";
-			$colv .= ',' . $_POST['v'][$voteSet][$preferenceNumber];
+			// Loop through each candidate specified in the config file
+			foreach ($candidates as $preferenceNumber => $candidate) {
+				
+				// Skip the first 'candidate' as that is actually a heading
+				if ($preferenceNumber == 0) {continue;}
+				
+				$coln .= ",v{$voteSet}p{$preferenceNumber}";
+				$colv .= ',' . $_POST['v'][$voteSet][$preferenceNumber];
+			}
 		}
-	}
-	
-	echo '<p>Recording your vote ...';
-    
-    // Start transaction.
-    if(!($openTrans = mysql_query("BEGIN WORK"))) return($this->error ("Failed to start database transaction."));
-    
-    // generate token; this is done as late as possible to minimise the chances of a race condition before the INSERT
-    if (!$token = $this->generateUniqueToken()) {return($this->error ("Token could not be generated. Please resubmit."));}	// Safe to end after a BEGIN WORK: MySQL documentation says "If a client connection drops, the server releases table locks held by the client."
-	
-	// Add the token field and value to the SQL extracts being built
-    $coln="token" . $coln;
-    $colv="'{$token}'" . $colv;
-    
-    // record data from the ballot HTML form along with random token.
-    if(!(mysql_query("INSERT INTO `{$this->votesTable}` ($coln) VALUES ($colv)"))
-       or mysql_affected_rows() != 1) return($this->error ("Database vote insert failure."));
-    
-    // modify the voter table to indicate this vote has been cast
-    if(!(mysql_query("UPDATE `{$this->voterTable}` SET voted='1' WHERE username='{$this->username}' AND voted='0'"))
-       or mysql_affected_rows() != 1) return($this->error ("Recording voter as having voted failed. As such, the vote itself has not been stored either."));
-	if(!(mysql_query("COMMIT"))) return($this->error ("Transaction failed to commit."));
-    $openTrans = false;
-    
-    // write of ballot to database was OK.
-    echo " done.</p><p>Updating your status as having voted ...";
-    
-    // update of voter having voted was successful
-    echo " done.</p>
-	<p>Our database indicates that it has successfully recorded your vote and, separately, that you have voted. Details are below.</p>
-	<p><strong>Thank you for voting. <a href=\"./\">Return to the front page.</a></strong></p>
-	";
-	if ($this->config['afterVoteMessageHtml']) {
-		echo "\n" . "<div class=\"warningbox\">";
-		echo "\n" . $this->config['afterVoteMessageHtml'];	// It is assumed that the process which generates this setting has already sanitised it for inappropriate HTML
-		echo "\n" . "</div>";
-	}
-	echo "
-	<p>We will now attempt to read back your vote from our database, and e-mail it to the returning officer" . ($voterReceipt ? ", blind-carbon-copied (BCC) to your @cam address" : '') . ".
-	In the highly unusual case that there is a failure somewhere in the remainder of this voting process, you should keep a record of your proof-of-voting token '<strong>{$token}</strong>' and use it to check your vote really was recorded correctly when the count sheet is posted up after voting has closed.</p>
-	";
-
-    // create e-mail body containing ballot information
-    if(!($result = mysql_query("SELECT * FROM `{$this->votesTable}` WHERE token='$token'"))) return($this->error ("Vote read-back failed (1)."));
-    if(!($row = mysql_fetch_assoc($result))) return($this->error ("Vote read-back failed (2)."));
-    
-    $message = "
-Below you will find a record of each of the selections you made on the
-ballot web-page in order. Each ballot choice is represented in a
-computer-parsable representation, with an equivalent verbal description
-to the right of each equals sign.
-
-Your voting token is '{$token}'.
-
-You should not disclose this e-mail or your voting token to others.
-";
-
-    foreach ($row as $k => $v){
-	    if ($k == 'token') {continue;}	// Skip the token line
-		if(is_numeric($k) || !is_numeric($v)){
-			return($this->error ("MySQL result is giving incorrect field names/values (1)."));
+		
+		echo '<p>Recording your vote ...';
+		
+		// Start transaction.
+		if (!$openTrans = mysql_query ('BEGIN WORK;')) {
+			return $this->error ('Failed to start database transaction.');
 		}
-		if(!preg_match('/\Av(\d+)p(\d+)\z/',$k,$matches)){
-			return($this->error ("MySQL result is giving incorrect field names/values (2)."));
+		
+		// Generate token; this is done as late as possible to minimise the chances of a race condition before the INSERT
+		if (!$token = $this->generateUniqueToken ()) {
+			return $this->error ('Token could not be generated. Please resubmit.');	// Safe to end after a BEGIN WORK: MySQL documentation says "If a client connection drops, the server releases table locks held by the client."
 		}
-		$thisPosition = $this->config['electionInfo'][$matches[1]-1][0];
-		$thisPreference = $matches[2];
-		$message.="$k: $v";
-		if($this->config['electionInfo'][$matches[1]-1][1] == 'referendum'){
-		  switch($v){
-		  case 1:
-		    $message.=" = Vote in favour of referendum ";
-		    break;
-		  case 2:
-		    $message.=" = Vote against referendum ";
-		    break;
-		  default:
-		    $message.=" = Abstain from voting in referendum ";
-		  }
-		  $message.="$thisPosition.";
-		}else{
-		  $thisCandidate = $v ? $this->config['electionInfo'][$matches[1]-1][$v] : "(no candidate)";
-		  if($thisPosition and $thisCandidate){
-		    $message.=" = Give preference $thisPreference to $thisCandidate for $thisPosition.";
-		  }
+		
+		// Add the token field and value to the SQL extracts being built
+		$coln = "token" . $coln;
+		$colv = "'{$token}'" . $colv;
+		
+		// Record data from the ballot HTML form along with random token.
+		if (!mysql_query ("INSERT INTO `{$this->votesTable}` ({$coln}) VALUES ({$colv});") or mysql_affected_rows() != 1) {
+			return $this->error ('Database vote insert failure.');
 		}
-		$message.="\n";
-    }
-	
-	# Add the ID as a reference, so that people get an explanation of the ID in the subject line (see below)
-	$message .= "\n\nReference ID for this election: " . $this->config['id'];
-	$message .= "\n\nConfiguration security hash of the program: " . $this->bobMd5;
-	$message .= "\nConfiguration security hash for this election: " . $this->configMd5;
-	if (!$voterReceipt) {
-		$message .= "\n\nThe voter opted not to receive an e-mail receipt.";
+		
+		// Modify the voter table to indicate this vote has been cast
+		if (!mysql_query ("UPDATE `{$this->voterTable}` SET voted='1' WHERE username='{$this->username}' AND voted='0';") or mysql_affected_rows () != 1) {
+			return $this->error ('Recording voter as having voted failed. As such, the vote itself has not been stored either.');
+		}
+		
+		# Commit the transaction
+		if (!mysql_query('COMMIT;')) {
+			return $this->error ('Transaction failed to commit.');
+		}
+		$openTrans = false;
+		
+		// Write of ballot to database was OK.
+		echo " done.</p>";
+		
+		// Update of voter having voted was successful
+		echo "\n<p>Updating your status as having voted ... done.</p>";
+		echo "\n<p>Our database indicates that it has successfully recorded your vote and, separately, that you have voted. Details are below.</p>";
+		echo "\n<p><strong>Thank you for voting. <a href=\"./\">Return to the front page.</a></strong></p>";
+		if ($this->config['afterVoteMessageHtml']) {
+			echo "\n" . "<div class=\"warningbox\">";
+			echo "\n" . $this->config['afterVoteMessageHtml'];	// It is assumed that the process which generates this setting has already sanitised it for inappropriate HTML
+			echo "\n" . "</div>";
+		}
+		echo "\n<p>We will now attempt to read back your vote from our database, and e-mail it to the returning officer" . ($voterReceipt ? ", blind-carbon-copied (BCC) to your @cam address" : '') . ".</p>";
+		echo "\n<p>In the highly unusual case that there is a failure somewhere in the remainder of this voting process, you should keep a record of your proof-of-voting token '<strong>{$token}</strong>' and use it to check your vote really was recorded correctly when the count sheet is posted up after voting has closed.</p>";
+		
+		// Create e-mail body containing ballot information
+		if (!$result = mysql_query ("SELECT * FROM `{$this->votesTable}` WHERE token='$token';")) {
+			return $this->error ('Vote read-back failed (1).');
+		}
+		if (!$row = mysql_fetch_assoc ($result)) {
+			return $this->error ("Vote read-back failed (2).");
+		}
+		
+		# Compile the message start
+		$message  = "Below you will find a record of each of the selections you made on the ballot web-page in order. Each ballot choice is represented in a computer-parsable representation, with an equivalent verbal description to the right of each equals sign.";
+		$message .= "\n\nYour voting token is '{$token}'.";
+		$message .= "\n\nYou should not disclose this e-mail or your voting token to others.";
+		$message = wordwrap ($message);
+		
+		foreach ($row as $k => $v){
+			if ($k == 'token') {continue;}	// Skip the token line
+			if (is_numeric($k) || !is_numeric ($v)){
+				return $this->error ('MySQL result is giving incorrect field names/values (1).');
+			}
+			if (!preg_match ('/\Av(\d+)p(\d+)\z/', $k, $matches)) {
+				return $this->error ('MySQL result is giving incorrect field names/values (2).');
+			}
+			$thisPosition = $this->config['electionInfo'][$matches[1]-1][0];
+			$thisPreference = $matches[2];
+			$message .= "{$k}: {$v}";
+			if ($this->config['electionInfo'][$matches[1]-1][1] == 'referendum') {
+				switch ($v){
+					case 1:
+						$message .= ' = Vote in favour of referendum ';
+						break;
+					case 2:
+						$message .= ' = Vote against referendum ';
+						break;
+					default:
+						$message .= ' = Abstain from voting in referendum ';
+				}
+				$message .= "{$thisPosition}.";
+			} else {
+				$thisCandidate = ($v ? $this->config['electionInfo'][$matches[1]-1][$v] : '(no candidate)');
+				if ($thisPosition and $thisCandidate){
+					$message .= " = Give preference {$thisPreference} to {$thisCandidate} for {$thisPosition}.";
+				}
+			}
+			$message .= "\n";
+		}
+		
+		# Add the ID as a reference, so that people get an explanation of the ID in the subject line (see below)
+		$message .= "\n\nReference ID for this election: " . $this->config['id'];
+		$message .= "\n\nConfiguration security hash of the program: " . $this->bobMd5;
+		$message .= "\nConfiguration security hash for this election: " . $this->configMd5;
+		if (!$voterReceipt) {
+			$message .= "\n\nThe voter opted not to receive an e-mail receipt.";
+		}
+		$message .= "\n\n\n--- END OF E-MAIL ---\n";
+		
+		# Continue the narration
+		echo "\n<p>" . ($voterReceipt ? 'If you do not receive a confirmation e-mail containing the text in the box below within a minute or two, we' : 'We') . " recommend that you save or print this webpage as an alternative personal record of your vote.</p>";
+		echo "\n<p>You should not disclose this e-mail or your voting token to others.</p>";
+		echo "\n<p><strong>When you have finished reading this page, including text below, you should ideally <a href=\"{$this->logoutLocation}\">logout</a> then close your browser.</strong></p>";
+		echo "\n<div class=\"votemsg\">";
+		echo "\n<pre>";
+		echo "\n" . $message;
+		echo "\n</pre>";
+		echo "\n</div>";
+		echo "\n<p>E-mailing your vote to the mailbox &lt;{$this->config['emailReturningOfficer']}&gt;" . ($voterReceipt ? " and blind-carbon-copying {$this->username}@cam.ac.uk" : '') . ' ...';
+		
+		# Send the e-mail and confirm
+		#!# NB Mail domain of @cam.ac.uk is currently hard-coded
+		$subject = 'Online voting: ' . $this->config['title'] . ' [' . $this->config['id'] . ']';
+		$extraHeaders  = "From: {$this->config['emailTech']}\r\n";
+		if ($voterReceipt) {
+			$extraHeaders .= "BCC: {$this->username}@cam.ac.uk\r\n";
+		}
+		if (!mail ($this->config['emailReturningOfficer'], $subject, $message, $extraHeaders)) {
+			return ($this->error ('Enqueue voting confirmation e-mail failed.'));
+		}
+		echo "\n" . " Voting confirmation e-mail successfully enqueued.</p>";
+		echo "\n<p><strong>Voting process has successfully completed.</strong></p>";
+		
+		return true;
 	}
-	$message .= "\n\n\n--- END OF E-MAIL ---\n";
 	
-	# Continue the narration
-	echo "\n<p>" . ($voterReceipt ? 'If you do not receive a confirmation e-mail containing the text in the box below within a minute or two, we' : 'We') . " recommend that you save or print this webpage as an alternative personal record of your vote.</p>";
-	echo "\n<p>You should not disclose this e-mail or your voting token to others.</p>";
-	echo "\n<p><strong>When you have finished reading this page, including text below, you should ideally <a href=\"{$this->logoutLocation}\">logout</a> then close your browser.</strong></p>";
-	echo "\n<div class=\"votemsg\">";
-	echo "\n<pre>";
-	echo "\n" . $message;
-	echo "\n</pre>";
-	echo "\n</div>";
-	echo "\n<p>E-mailing your vote to the mailbox &lt;{$this->config['emailReturningOfficer']}&gt;" . ($voterReceipt ? " and blind-carbon-copying {$this->username}@cam.ac.uk" : '') . ' ...';
 	
-	# Send the e-mail and confirm
-	#!# NB Mail domain of @cam.ac.uk is currently hard-coded
-	$subject = 'Online voting: ' . $this->config['title'] . ' [' . $this->config['id'] . ']';
-	$extraHeaders  = "From: {$this->config['emailTech']}\r\n";
-	if ($voterReceipt) {
-		$extraHeaders .= "BCC: {$this->username}@cam.ac.uk\r\n";
-	}
-	if (!mail ($this->config['emailReturningOfficer'], $subject, $message, $extraHeaders)) {
-		return ($this->error ('Enqueue voting confirmation e-mail failed.'));
-	}
-	echo "\n" . " Voting confirmation e-mail successfully enqueued.</p>";
-	echo "\n<p><strong>Voting process has successfully completed.</strong></p>";
-	
-	return true;
-  }
-  
-  
 	# Results page
 	private function results ()
 	{
