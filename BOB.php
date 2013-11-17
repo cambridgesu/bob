@@ -2095,10 +2095,8 @@ class BOB
 			return false;
 		}
 		
-		// add the vote
-		$openTrans = false;
-		$retval = $this->voteWFinternal($openTrans);
-		$openTrans and (mysql_query("ROLLBACK") or $this->error ("Unable to roll back the database transaction."));
+		// Add the vote
+		$retval = $this->voteWFinternal ();
 		return $retval;
 	}
   
@@ -2277,7 +2275,7 @@ class BOB
   
   
 	# Internal voting workflow
-	private function voteWFinternal (&$openTrans)
+	private function voteWFinternal ()
 	{
 		# Determine whether the voter will receive the vote receipt
 		$voterReceipt = $this->voterReceipt ();
@@ -2302,12 +2300,13 @@ class BOB
 		echo '<p>Recording your vote ...';
 		
 		// Start transaction.
-		if (!$openTrans = mysql_query ('BEGIN WORK;')) {
+		if (!mysql_query ('BEGIN WORK;')) {
 			return $this->error ('Failed to start database transaction.');
 		}
 		
 		// Generate token; this is done as late as possible to minimise the chances of a race condition before the INSERT
 		if (!$token = $this->generateUniqueToken ()) {
+			$this->doRollback ();
 			return $this->error ('Token could not be generated. Please resubmit.');	// Safe to end after a BEGIN WORK: MySQL documentation says "If a client connection drops, the server releases table locks held by the client."
 		}
 		
@@ -2317,19 +2316,21 @@ class BOB
 		
 		// Record data from the ballot HTML form along with random token.
 		if (!mysql_query ("INSERT INTO `{$this->votesTable}` ({$coln}) VALUES ({$colv});") or mysql_affected_rows() != 1) {
+			$this->doRollback ();
 			return $this->error ('Database vote insert failure.');
 		}
 		
 		// Modify the voter table to indicate this vote has been cast
-		if (!mysql_query ("UPDATE `{$this->voterTable}` SET voted='1' WHERE username='{$this->username}' AND voted='0';") or mysql_affected_rows () != 1) {
+		if (!mysql_query ("UPDATE `{$this->voterTable}` SET voted = '1' WHERE username='{$this->username}' AND voted = '0';") or mysql_affected_rows () != 1) {
+			$this->doRollback ();
 			return $this->error ('Recording voter as having voted failed. As such, the vote itself has not been stored either.');
 		}
 		
 		# Commit the transaction
-		if (!mysql_query('COMMIT;')) {
+		if (!mysql_query ('COMMIT;')) {
+			$this->doRollback ();
 			return $this->error ('Transaction failed to commit.');
 		}
-		$openTrans = false;
 		
 		// Write of ballot to database was OK.
 		echo " done.</p>";
@@ -2427,6 +2428,18 @@ class BOB
 		
 		return true;
 	}
+	
+	
+	# Function to do a database rollback
+	private function doRollback ()
+	{
+		if (!mysql_query ('ROLLBACK;')) {
+			$this->error ('Unable to roll back the database transaction.');
+		}
+		
+		# No return value, as outcome of rollback is not evaluated
+	}
+	
 	
 	
 	# Results page
