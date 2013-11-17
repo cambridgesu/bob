@@ -1919,24 +1919,20 @@ class BOB
 		return $this->vote ($viewOnly = true);
 	}
 	
-  
-  
-  private function err($e) {
-    return $this->fail("<strong>ERROR:</strong> $e</p>");
-  }
-  
-  
-  private function fail($e) { 
-    echo $e;
-    return false;
-  }
-  
-  
+	
+	# Error-reporting function
+	private function error ($errorString) {
+		$message = "\n<p><strong>ERROR:</strong> {$errorString}</p>";
+		echo $message;
+		return false;
+	}
+	
+	
 	// public entry point for voting workflow
 	private function vote ($viewOnly = false)
 	{
 		# Check that the ballot is open; note that not even admins can see the ballot paper before the election opens; this is so that, in a managed hosting GUI scenario, where the vote is being randomised, an election official cannot randomise until they find an order they like
-	    if ($this->beforeElection) {
+		if ($this->beforeElection) {
 			echo "<p>This ballot is not yet open.</p>\n<p>It will run from<br />{$this->ballotStartFormatted} &nbsp; to<br />{$this->ballotEndFormatted}.</p>";
 			return false;
 		}
@@ -2102,7 +2098,7 @@ class BOB
 		// add the vote
 		$openTrans = false;
 		$retval = $this->voteWFinternal($openTrans);
-		$openTrans and (mysql_query("ROLLBACK") or $this->err("Unable to roll back the database transaction."));
+		$openTrans and (mysql_query("ROLLBACK") or $this->error ("Unable to roll back the database transaction."));
 		return $retval;
 	}
   
@@ -2261,8 +2257,8 @@ class BOB
     $tokenChosen = false;
 	while (!$tokenChosen) {
 		$token = $this->generateToken();
-	    if(!($result = mysql_query("SELECT COUNT(token) AS total FROM `{$this->votesTable}` WHERE token='{$token}'"))) return($this->err("Token checking failed. The vote submission could not proceed."));
-	    if(!($row = mysql_fetch_assoc($result))) return($this->err("Token checking failed (2). The vote submission could not proceed."));
+	    if(!($result = mysql_query("SELECT COUNT(token) AS total FROM `{$this->votesTable}` WHERE token='{$token}'"))) return($this->error ("Token checking failed. The vote submission could not proceed."));
+	    if(!($row = mysql_fetch_assoc($result))) return($this->error ("Token checking failed (2). The vote submission could not proceed."));
 		if ($row['total'] == '0') {$tokenChosen = true;}	// If there are no matching tokens, then accept this one
 	}
 	
@@ -2306,10 +2302,10 @@ class BOB
 	echo '<p>Recording your vote ...';
     
     // Start transaction.
-    if(!($openTrans = mysql_query("BEGIN WORK"))) return($this->err("Failed to start database transaction."));
+    if(!($openTrans = mysql_query("BEGIN WORK"))) return($this->error ("Failed to start database transaction."));
     
     // generate token; this is done as late as possible to minimise the chances of a race condition before the INSERT
-    if (!$token = $this->generateUniqueToken()) {return($this->err("Token could not be generated. Please resubmit."));}	// Safe to end after a BEGIN WORK: MySQL documentation says "If a client connection drops, the server releases table locks held by the client."
+    if (!$token = $this->generateUniqueToken()) {return($this->error ("Token could not be generated. Please resubmit."));}	// Safe to end after a BEGIN WORK: MySQL documentation says "If a client connection drops, the server releases table locks held by the client."
 	
 	// Add the token field and value to the SQL extracts being built
     $coln="token" . $coln;
@@ -2317,12 +2313,12 @@ class BOB
     
     // record data from the ballot HTML form along with random token.
     if(!(mysql_query("INSERT INTO `{$this->votesTable}` ($coln) VALUES ($colv)"))
-       or mysql_affected_rows() != 1) return($this->err("Database vote insert failure."));
+       or mysql_affected_rows() != 1) return($this->error ("Database vote insert failure."));
     
     // modify the voter table to indicate this vote has been cast
     if(!(mysql_query("UPDATE `{$this->voterTable}` SET voted='1' WHERE username='{$this->username}' AND voted='0'"))
-       or mysql_affected_rows() != 1) return($this->err("Recording voter as having voted failed. As such, the vote itself has not been stored either."));
-	if(!(mysql_query("COMMIT"))) return($this->err("Transaction failed to commit."));
+       or mysql_affected_rows() != 1) return($this->error ("Recording voter as having voted failed. As such, the vote itself has not been stored either."));
+	if(!(mysql_query("COMMIT"))) return($this->error ("Transaction failed to commit."));
     $openTrans = false;
     
     // write of ballot to database was OK.
@@ -2344,8 +2340,8 @@ class BOB
 	";
 
     // create e-mail body containing ballot information
-    if(!($result = mysql_query("SELECT * FROM `{$this->votesTable}` WHERE token='$token'"))) return($this->err("Vote read-back failed (1)."));
-    if(!($row = mysql_fetch_assoc($result))) return($this->err("Vote read-back failed (2)."));
+    if(!($result = mysql_query("SELECT * FROM `{$this->votesTable}` WHERE token='$token'"))) return($this->error ("Vote read-back failed (1)."));
+    if(!($row = mysql_fetch_assoc($result))) return($this->error ("Vote read-back failed (2)."));
     
     $message = "
 Below you will find a record of each of the selections you made on the
@@ -2361,10 +2357,10 @@ You should not disclose this e-mail or your voting token to others.
     foreach ($row as $k => $v){
 	    if ($k == 'token') {continue;}	// Skip the token line
 		if(is_numeric($k) || !is_numeric($v)){
-			return($this->err("MySQL result is giving incorrect field names/values (1)."));
+			return($this->error ("MySQL result is giving incorrect field names/values (1)."));
 		}
 		if(!preg_match('/\Av(\d+)p(\d+)\z/',$k,$matches)){
-			return($this->err("MySQL result is giving incorrect field names/values (2)."));
+			return($this->error ("MySQL result is giving incorrect field names/values (2)."));
 		}
 		$thisPosition = $this->config['electionInfo'][$matches[1]-1][0];
 		$thisPreference = $matches[2];
@@ -2418,7 +2414,7 @@ You should not disclose this e-mail or your voting token to others.
 		$extraHeaders .= "BCC: {$this->username}@cam.ac.uk\r\n";
 	}
 	if (!mail ($this->config['emailReturningOfficer'], $subject, $message, $extraHeaders)) {
-		return ($this->err ('Enqueue voting confirmation e-mail failed.'));
+		return ($this->error ('Enqueue voting confirmation e-mail failed.'));
 	}
 	echo "\n" . " Voting confirmation e-mail successfully enqueued.</p>";
 	echo "\n<p><strong>Voting process has successfully completed.</strong></p>";
@@ -2589,7 +2585,7 @@ You should not disclose this e-mail or your voting token to others.
 	private function getVoteData (&$errorMessage = false)
 	{
 		# Get the votes, and order them by token so that it is easier for voters to find their token in an alphabetical list
-		if(!($result = mysql_query ("SELECT * FROM `{$this->votesTable}`;"))) return ($this->err("Vote list read failed."));
+		if(!($result = mysql_query ("SELECT * FROM `{$this->votesTable}`;"))) return ($this->error ("Vote list read failed."));
 		
 		# Create an array of the fieldnames
 		$fieldnames = array ();
@@ -3160,7 +3156,7 @@ r.generateReport()
 		# Remind people that this is personal data
 		echo "\n<p><strong>Note:</strong> for reasons of data protection, this list of users that have voted is visible only to those on the electoral roll and to the election officials.</p>";
 		
-		if(!($result = mysql_query("SELECT username FROM `{$this->voterTable}` WHERE voted='1';"))) return($this->err("Vote list read failed."));
+		if(!($result = mysql_query("SELECT username FROM `{$this->voterTable}` WHERE voted='1';"))) return($this->error ("Vote list read failed."));
 		
 		#!# <pre> is generated still if no-one voted
 		echo "\n\n<pre>\n";
