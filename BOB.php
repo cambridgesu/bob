@@ -1888,9 +1888,9 @@ class BOB
 		$usernameEntitySafe = htmlspecialchars ($username);
 		
 		# Show the form
-		$html  = "\n<p>Enter a username to check:</p>";
+		$html  = "\n<p>Enter a username to check whether for this election the user is in the list of " . ($this->splitElection ? 'online ' : '') . "voters and whether they have voted:</p>";
 		$html .= "\n<form method=\"post\" action=\"./?" . __FUNCTION__ . '">';
-		$html .= "\n<input type=\"text\" name=\"username\" value=\"{$usernameEntitySafe}\">";
+		$html .= "\n<input type=\"text\" name=\"username\" value=\"{$usernameEntitySafe}\" autofocus=\"autofocus\">";
 		$html .= "\n<input type=\"submit\">";
 		$html .= "\n</form>";
 		
