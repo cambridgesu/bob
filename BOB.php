@@ -3541,13 +3541,13 @@ r.generateReport()
 		$fieldnames = array_keys ($votesTableFields);
 		
 		# Process the TSV data (data pasted in from a spreadsheet will be TSV)
-		$additionalvotesErrorMessage = false;
+		$additionalVotesErrorMessage = false;
 		if ($formSubmitted && $additionalVotesValue) {
-			$csvData = $this->csvToArray ($additionalVotesValue, $separator = "\t", $fieldnames, $this->additionalVotePrefix, $additionalvotesErrorMessage);
+			$csvData = $this->csvToArray ($additionalVotesValue, $separator = "\t", $fieldnames, $this->additionalVotePrefix, $additionalVotesErrorMessage);
 		}
 		
 		# Determine the form status
-		$formComplete = ($formSubmitted && strlen ($statusValue) && strlen ($additionalVotesValue) && !$additionalvotesErrorMessage);
+		$formComplete = ($formSubmitted && strlen ($statusValue) && strlen ($additionalVotesValue) && !$additionalVotesErrorMessage);
 		
 		# Create the form to add the votes
 		$html .= "\n<p>Using the form below, you can add in additional votes collected on paper.</p>";
@@ -3571,8 +3571,8 @@ r.generateReport()
 		if ($formSubmitted && !$additionalVotesValue) {
 			$html .= "\n" . '<p class="warning"><em>You didn\'t enter your spreadsheet data!</em></p>';
 		}
-		if ($additionalvotesErrorMessage) {
-			$html .= "\n" . '<p class="warning"><em>' . $additionalvotesErrorMessage . '</em></p>';
+		if ($additionalVotesErrorMessage) {
+			$html .= "\n" . '<p class="warning"><em>' . $additionalVotesErrorMessage . '</em></p>';
 		}
 		$html .= "\n" . '<textarea name="additionalvotes" cols="100" rows="15">' . htmlspecialchars ($additionalVotesValue) . '</textarea>';
 		$html .= "\n" . '<p><input type="submit" /></p>';
