@@ -3234,6 +3234,9 @@ r.generateReport()
 	# Function to create formatted, printable lists of who has already voted
 	private function admin_paperroll ()
 	{
+		# Introduce purpose of this page
+		echo "\n<p>This page is provided so that you can print off a list of voters, showing who has already voted, for use during the paper voting phase after online voting has closed.</p>";
+		
 		# Only allow viewability after close of online voting
 		if (!$this->afterElection) {
 			echo "\n<p>The paper ballot list is not available until close of online voting.</p>";
@@ -3356,6 +3359,9 @@ r.generateReport()
 	# Function to print emulated paper ballots
 	private function admin_ballotpapers ()
 	{
+		# Introduce purpose of this page
+		echo "\n<p>This page is provided so that you can print off pre-formatted ballot papers, for use during the paper voting phase after online voting has closed.</p>";
+		
 		# End if this is not a split ballot
 		if (!$this->splitElection) {
 			echo "\n<p>This is not an online+paper election (i.e. the cast ballots are immediately viewable on closure of online voting), so emulated paper ballots are not available.</p>";
@@ -3465,6 +3471,9 @@ r.generateReport()
 	{
 		# Start the HTML
 		$html  = '';
+		
+		# Introduce purpose of this page
+		echo "\n<p>This page is provided so that you can add in additional votes collected on paper, once the paper voting phase has closed.</p>";
 		
 		# Return no problems if functionality not enabled
 		if (!$this->config['additionalVotesCsvDirectory']) {
