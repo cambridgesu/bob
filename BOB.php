@@ -620,6 +620,7 @@ class BOB
 		}
 		
 		# Ensure that there are users in the voter table
+		#!# registeredVoters should probably be renamed votersOnOnlineRoll, or similar, for clarity
 		if (!$this->registeredVoters = $this->registeredVoters ()) {
 			$this->showErrors ();
 			return false;
@@ -3542,8 +3543,22 @@ r.generateReport()
 		
 		# Process the TSV data (data pasted in from a spreadsheet will be TSV)
 		$additionalVotesErrorMessage = false;
+		$csvData = array ();
 		if ($formSubmitted && $additionalVotesValue) {
 			$csvData = $this->csvToArray ($additionalVotesValue, $separator = "\t", $fieldnames, $this->additionalVotePrefix, $additionalVotesErrorMessage);
+		}
+		
+		# If the paper vote takes place after the online vote, i.e. uses the same electoral roll, ensure the total number of submitted votes is not more than the number of voters
+		if ($this->paperVotingFollowsOnlineVoting) {
+			if ($csvData) {
+				if (!$additionalVotesErrorMessage) {	// I.e. don't do this check until the user submission format is correct
+					$totalOnlineVotes = $this->totalVoted;
+					$totalPaperVotes = count ($csvData);
+					if (($totalOnlineVotes + $totalPaperVotes) > $this->registeredVoters) {
+						$additionalVotesErrorMessage = 'You have entered ' . number_format ($totalPaperVotes) . ' additional ' . ($totalPaperVotes == 1 ? 'vote' : 'votes') . ' cast on paper. When added to the ' . number_format ($totalOnlineVotes) . ' votes cast online, this is more than the number of voters (' . number_format ($this->registeredVoters) . ') on the electoral roll you loaded.';
+					}
+				}
+			}
 		}
 		
 		# Determine the form status
