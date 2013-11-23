@@ -15,7 +15,7 @@
  *
  * Token word list Copyright The Internet Society (1998).
  *
- * Version 1.1.7
+ * Version 1.1.8
  *
  * Copyright (C) authors as above
  * 
@@ -494,14 +494,17 @@ class BOB
 		'admin_paperroll' => array (
 			'description' => 'Electoral roll for paper voting (following online voting)',
 			'administrator' => true,
+			'require' => 'splitElection',
 		),
 		'admin_ballotpapers' => array (
 			'description' => 'Printable ballot papers for paper voting (following online voting)',
 			'administrator' => true,
+			'require' => 'splitElection',
 		),
 		'admin_additionalvotes' => array (
 			'description' => 'Enter additional votes (from paper voting)',
 			'administrator' => true,
+			'require' => 'splitElection',
 		),
 	);
 	
@@ -667,6 +670,16 @@ class BOB
 		if (!$this->additionalVotesSetupOk ()) {
 			$this->showErrors ();
 			return false;
+		}
+		
+		# Unset actions failing to meet a required property
+		foreach ($this->actions as $action => $attributes) {
+			if (array_key_exists ('require', $attributes)) {
+				$requirementProperty = $attributes['require'];
+				if (!$this->{$requirementProperty}) {
+					unset ($this->actions[$action]);
+				}
+			}
 		}
 		
 		# Validate and set the action
@@ -3362,12 +3375,6 @@ r.generateReport()
 		# Introduce purpose of this page
 		echo "\n<p>This page is provided so that you can print off pre-formatted ballot papers, for use during the paper voting phase after online voting has closed.</p>";
 		
-		# End if this is not a split ballot
-		if (!$this->splitElection) {
-			echo "\n<p>This is not an online+paper election (i.e. the cast ballots are immediately viewable on closure of online voting), so emulated paper ballots are not available.</p>";
-			return false;
-		}
-		
 		# Only allow viewability after close of online voting
 		if (!$this->afterElection) {
 			echo "\n<p>The emulated paper ballot sheets are not available until close of online voting.</p>";
@@ -3479,12 +3486,6 @@ r.generateReport()
 		if (!$this->config['additionalVotesCsvDirectory']) {
 			echo "\n<p>The functionality for adding additional votes after close of voting is not configured for this installation.</p>";
 			return;
-		}
-		
-		# End if this is not a split ballot
-		if (!$this->splitElection) {
-			echo "\n<p>This is not an online+paper election (i.e. the cast ballots are immediately viewable on closure of online voting), so the functionality for adding additional votes is not available.</p>";
-			return false;
 		}
 		
 		# Return no problems if not relevant to the current phase
