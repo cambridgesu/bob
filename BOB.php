@@ -3271,7 +3271,7 @@ r.generateReport()
 				$voterData[$index]['forename'] = '<s>' . htmlspecialchars ($voterData[$index]['forename']) . '</s>';
 				$voterData[$index]['surname'] = '<s>' . htmlspecialchars ($voterData[$index]['surname']) . '</s>';
 			}
-			$voterData[$index]['voted'] = ($voterData[$index]['voted'] ? ($this->splitElection ? 'Already voted online' : 'Voted') : '');
+			$voterData[$index]['voted'] = ($voterData[$index]['voted'] ? 'Already voted online' : '');
 		}
 		
 		# Regroup the main data by unit
