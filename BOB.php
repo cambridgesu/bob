@@ -3525,7 +3525,7 @@ r.generateReport()
 		
 		# Obtain the form values, and set the default
 		$statusValue = ($formSubmitted && is_string ($_POST['status']) && array_key_exists ($_POST['status'], $statuses) ? $_POST['status'] : 'draft');
-		$additionalvotesValue = ($formSubmitted && is_string ($_POST['additionalvotes']) ? $_POST['additionalvotes'] : '');
+		$additionalVotesValue = ($formSubmitted && is_string ($_POST['additionalvotes']) ? $_POST['additionalvotes'] : '');
 		
 		# Obtain the expected fieldnames
 		$votesTableFields = $this->votesTableFields ();
@@ -3533,12 +3533,12 @@ r.generateReport()
 		
 		# Process the TSV data (data pasted in from a spreadsheet will be TSV)
 		$additionalvotesErrorMessage = false;
-		if ($formSubmitted && $additionalvotesValue) {
-			$csvData = $this->csvToArray ($additionalvotesValue, $separator = "\t", $fieldnames, $this->additionalVotePrefix, $additionalvotesErrorMessage);
+		if ($formSubmitted && $additionalVotesValue) {
+			$csvData = $this->csvToArray ($additionalVotesValue, $separator = "\t", $fieldnames, $this->additionalVotePrefix, $additionalvotesErrorMessage);
 		}
 		
 		# Determine the form status
-		$formComplete = (strlen ($statusValue) && strlen ($additionalvotesValue) && !$additionalvotesErrorMessage);
+		$formComplete = (strlen ($statusValue) && strlen ($additionalVotesValue) && !$additionalvotesErrorMessage);
 		
 		# Create the form to add the votes
 		$html .= "\n<p>Using the form below, you can add in additional votes collected on paper.</p>";
@@ -3559,13 +3559,13 @@ r.generateReport()
 		}
 		$html .= "\n" . '</p>';
 		$html .= "\n" . '<p>Paste in the contents of your spreadsheet; see notes below about the format.</p>';
-		if ($formSubmitted && !$additionalvotesValue) {
+		if ($formSubmitted && !$additionalVotesValue) {
 			$html .= "\n" . '<p class="warning"><em>You didn\'t enter your spreadsheet data!</em></p>';
 		}
 		if ($additionalvotesErrorMessage) {
 			$html .= "\n" . '<p class="warning"><em>' . $additionalvotesErrorMessage . '</em></p>';
 		}
-		$html .= "\n" . '<textarea name="additionalvotes" cols="100" rows="15">' . htmlspecialchars ($additionalvotesValue) . '</textarea>';
+		$html .= "\n" . '<textarea name="additionalvotes" cols="100" rows="15">' . htmlspecialchars ($additionalVotesValue) . '</textarea>';
 		$html .= "\n" . '<p><input type="submit" /></p>';
 		$html .= "\n</form>";
 		
