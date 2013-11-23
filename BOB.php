@@ -1114,6 +1114,7 @@ class BOB
 			table.lines {border-collapse: collapse; /* width: 95%; */}
 			.lines td, .lines th {border-bottom: 1px solid #e9e9e9; padding: 6px 4px 2px; vertical-align: top; text-align: left;}
 			.lines tr:first-child {border-top: 1px solid #e9e9e9;}
+			table.compressed td {padding: 0 4px;}
 
 			table.lines td.comment {padding-bottom: 1.25em;}
 			table.regulated td.key p {width: 150px;}
@@ -3540,7 +3541,7 @@ r.generateReport()
 		$formComplete = (strlen ($statusValue) && strlen ($additionalvotesValue) && !$additionalvotesErrorMessage);
 		
 		# Create the form to add the votes
-		$html .= "\n<p>Using this form, you can add in additional votes collected on paper.</p>";
+		$html .= "\n<p>Using the form below, you can add in additional votes collected on paper.</p>";
 		$html .= "\n<p>It is <strong>your</strong> responsibility to check the validity of the votes you are pasting in.</p>";
 		if ($existingLoaded) {
 			$html .= "\n" . '<p>There is previously-added additional vote data (' . implode (' and ', $existingLoaded) . ') loaded. Submitting this form (even if the contents are found to be invalid) will clear this existing additional vote data.</p>';
@@ -3565,10 +3566,15 @@ r.generateReport()
 			$html .= "\n" . '<p class="warning"><em>' . $additionalvotesErrorMessage . '</em></p>';
 		}
 		$html .= "\n" . '<textarea name="additionalvotes" cols="100" rows="15">' . htmlspecialchars ($additionalvotesValue) . '</textarea>';
-		$html .= "\n" . '<p class=\"comment\">The first row must be of the fieldnames, i.e.: <em>' . implode ("\t", $fieldnames) . '</em><br />';
-		$html .= "\n" . "Each result row must begin with a token starting <em>{$this->additionalVotePrefix}</em>, i.e. <em>{$this->additionalVotePrefix}1</em> then <em>{$this->additionalVotePrefix}2</em>, etc., one vote set per line.</p>";
 		$html .= "\n" . '<p><input type="submit" /></p>';
 		$html .= "\n</form>";
+		
+		# Describe the format
+		$html .= "\n" . '<p class=\"comment\">The first row must be of the fieldnames, i.e.: <em>' . implode ("\t", $fieldnames) . '</em> .<br />';
+		$html .= "\n" . "Each result row must begin with a token starting <em>{$this->additionalVotePrefix}</em>, i.e. <em>{$this->additionalVotePrefix}1</em> then <em>{$this->additionalVotePrefix}2</em>, etc., one vote set per line.<br />";
+		$html .= "\n" . "There must not be any empty rows between the lines.</p>";
+		$html .= "\n" . '<p><em>Example:</em></p>';
+		$html .= "\n" . $this->samplePaperVotesSpreadsheet ($fieldnames);
 		
 		# End if the form is not complete
 		if (!$formComplete) {
@@ -3606,6 +3612,40 @@ r.generateReport()
 		
 		# Show the HTML
 		echo $html;
+	}
+	
+	
+	# Function to generate a sample paper votes spreadsheet
+	private function samplePaperVotesSpreadsheet ($fieldnames)
+	{
+		# Generate the HTML
+		$html  = "\n" . '<table class="border lines compressed regulated">';
+		$html .= "\n\t" . '<tr>';
+		foreach ($fieldnames as $fieldname) {
+			$html .= "<td>{$fieldname}</td>";
+		}
+		$html .= '</tr>';
+		$generateSamples = 4;
+		for ($i = 1; $i <= $generateSamples; $i++) {
+			$html .= "\n\t" . '<tr>';
+			$html .= "\n\t<td>additionalvote{$i}</td>";
+			foreach ($this->config['electionInfo'] as $voteSet => $candidates) {
+				array_shift ($candidates);	// Skip label
+				$totalCandidates = count ($candidates);
+				$availableChoices = array_merge (range (1, $totalCandidates), array_fill (0, $totalCandidates, 0));	// Each candidate (e.g. 1,2,3) plus possibility of not voting for each (0,0,0)
+				foreach ($candidates as $candidate) {
+					$choiceIndex = array_rand ($availableChoices);	// Make a choice
+					$result = $availableChoices[$choiceIndex];	// Select the value
+					unset ($availableChoices[$choiceIndex]);	// Remove from list
+					$html .= "\n\t<td>" . $result . '</td>';
+				}
+			}
+			$html .= "\n\t" . '</tr>';
+		}
+		$html .= "\n" . '</table>';
+		
+		# Return the HTML
+		return $html;
 	}
 	
 	
