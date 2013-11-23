@@ -699,6 +699,7 @@ class BOB
 		# Show the title
 		if (!$disableGui) {
 			echo "\n<p class=\"loggedinas\">You are logged in as: <strong>{$this->username}</strong> [<a href=\"{$this->logoutLocation}\" class=\"logout\">log out</a>]</p>";
+			echo "\n" . '<p class="navigationmenu"><a href="./">Ballot home</a>' . ($this->userIsElectionOfficial ? ' | <a href="./?admin">Admin section</a>' : '') . '</p>';
 			echo "\n\n\n<h1>{$this->pageTitle}</h1>\n\n";
 		}
 		
@@ -1053,6 +1054,7 @@ class BOB
 			option {color: #603;}
 			.comment {color: #444;}
 			p.loggedinas {text-align: right;}
+			p.navigationmenu {float: right; margin-left: 20px; color: gray;}
 			h2.unit, h2.paperballots {page-break-before: always;}
 			table.paperroll th {min-width: 150px;}
 			table.ballotpapers {width: 85%;}
