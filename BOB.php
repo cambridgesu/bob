@@ -494,12 +494,12 @@ class BOB
 		'admin_paperroll' => array (
 			'description' => 'Electoral roll for paper voting (following online voting)',
 			'administrator' => true,
-			'require' => 'splitElection',
+			'require' => 'paperVotingFollowsOnlineVoting',
 		),
 		'admin_ballotpapers' => array (
 			'description' => 'Printable ballot papers for paper voting (following online voting)',
 			'administrator' => true,
-			'require' => 'splitElection',
+			'require' => 'paperVotingFollowsOnlineVoting',
 		),
 		'admin_additionalvotes' => array (
 			'description' => 'Enter additional votes (from paper voting)',
@@ -665,6 +665,9 @@ class BOB
 		
 		# Set whether this is a split election (online and paper)
 		$this->splitElection = $this->splitElection ();
+		
+		# Set whether, for a split election, whether paper voting follows online voting (rather than being concurrent)
+		$this->paperVotingFollowsOnlineVoting = ($this->splitElection && ($this->config['paperVotingEnd'] > $this->config['ballotEnd']));
 		
 		# Ensure correct setup of any CSV file(s) for additional votes transcribed from paper
 		if (!$this->additionalVotesSetupOk ()) {
