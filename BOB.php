@@ -15,7 +15,7 @@
  *
  * Token word list Copyright The Internet Society (1998).
  *
- * Version 1.1.8
+ * Version 1.1.9
  *
  * Copyright (C) authors as above
  * 
@@ -3523,9 +3523,18 @@ r.generateReport()
 			}
 		}
 		
+		# Set any existing loaded data to be prefilled
+		$initialAdditionalVotesValue = '';
+		$initialStatusValue = 'draft';
+		if ($this->additionalVotesFile) {
+			$alreadyLoadedData = file_get_contents ($this->additionalVotesFile);
+			$initialAdditionalVotesValue = str_replace (',', "\t", $alreadyLoadedData);	// Convert from (basic, unquoted) CSV to TSV
+			$initialStatusValue = ($this->additionalVotesFileFinal ? 'final' : 'draft');
+		}
+		
 		# Obtain the form values, and set the default
-		$statusValue = ($formSubmitted && is_string ($_POST['status']) && array_key_exists ($_POST['status'], $statuses) ? $_POST['status'] : 'draft');
-		$additionalVotesValue = ($formSubmitted && is_string ($_POST['additionalvotes']) ? $_POST['additionalvotes'] : '');
+		$statusValue = ($formSubmitted && is_string ($_POST['status']) && array_key_exists ($_POST['status'], $statuses) ? $_POST['status'] : $initialStatusValue);
+		$additionalVotesValue = ($formSubmitted && is_string ($_POST['additionalvotes']) ? $_POST['additionalvotes'] : $initialAdditionalVotesValue);
 		
 		# Obtain the expected fieldnames
 		$votesTableFields = $this->votesTableFields ();
@@ -3538,7 +3547,7 @@ r.generateReport()
 		}
 		
 		# Determine the form status
-		$formComplete = (strlen ($statusValue) && strlen ($additionalVotesValue) && !$additionalvotesErrorMessage);
+		$formComplete = ($formSubmitted && strlen ($statusValue) && strlen ($additionalVotesValue) && !$additionalvotesErrorMessage);
 		
 		# Create the form to add the votes
 		$html .= "\n<p>Using the form below, you can add in additional votes collected on paper.</p>";
