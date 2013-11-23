@@ -3553,7 +3553,7 @@ r.generateReport()
 		$html .= "\n<p>Using the form below, you can add in additional votes collected on paper.</p>";
 		$html .= "\n<p>It is <strong>your</strong> responsibility to check the validity of the votes you are pasting in.</p>";
 		if ($existingLoaded) {
-			$html .= "\n" . '<p>There is previously-added additional vote data (' . implode (' and ', $existingLoaded) . ') loaded. Submitting this form (even if the contents are found to be invalid) will clear this existing additional vote data.</p>';
+			$html .= "\n" . '<p>There is previously-added additional vote data (' . implode (' and ', $existingLoaded) . ') loaded, as shown below. Pressing the submit button below will clear this existing additional vote data.</p>';
 		}
 		if ($deletedPrevious) {
 			$html .= "\n" . '<p>Previously-added additional vote data (' . implode (' and ', $deletedPrevious) . ') has been cleared.</p>';
