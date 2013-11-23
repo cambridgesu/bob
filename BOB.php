@@ -2524,7 +2524,7 @@ class BOB
 				if ($this->userIsElectionOfficial) {
 					echo "\n<div class=\"graybox\">";
 					echo "\n\t<p>The results below are only in <strong>draft</strong> and are <strong>visible only to you as a Returning Officer</strong>.</p>";
-					echo "\n\t<p>Please check below and then upload a finalised version.</p>";
+					echo "\n\t<p class=\"warning\">Please check below and then <a href=\"./?admin_additionalvotes\">return to the paper votes entry page</a> to set the results as finalised.</p>";
 					echo "\n</div>";
 				} else {
 					echo "\n<p>This election is being conducted using paper votes also.</p>";
