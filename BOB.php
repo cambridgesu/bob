@@ -3017,7 +3017,9 @@ r.generateReport()
 		echo "\n<p class=\"warning\">Any results noted here are preliminary/indicative calculations.<br />Only the declaration of the Returning Officer shall indicate finalised results.</p>";
 		echo "\n<p class=\"warning\">These results have been counted from the raw data automatically using OpenSTV. It is possible that any counting system may have bugs. The Returning Officer is responsible for the accuracy of that count and repeating it using a different counting program if wished.</p>";
 		echo "\n</div>";
-		echo "\n<p>Jump to results below for:</p>" . "\n<ul>" . implode ("\n\t", $dropList) . "\n</ul>";
+		if (count ($dropList) > 1) {
+			echo "\n<p>Jump to results below for:</p>" . "\n<ul>" . implode ("\n\t", $dropList) . "\n</ul>";
+		}
 		
 		# Run the program for each ballot
 		$listing  = '';
