@@ -1086,6 +1086,8 @@ class BOB
 			p.winner {color: #603; font-weight: bold; font-size: 1.2em; background-image: url(/images/icons/bullet_go.png); background-position: 5px 1px; background-repeat: no-repeat; padding-left: 28px;}
 			p.warning {color: red;}
 			p.success {background-image: url(/images/icons/tick.png); background-repeat: no-repeat; padding-left: 22px;}
+			h2.electionresult {position: relative;}
+			h2.electionresult a.resultpermalink {position: absolute; left: -1em; font-size: 0.83em; color: #aaa;}
 
 			div.graybox {border: 1px solid #ddd; padding: 10px 15px; margin: 0 10px 10px 0; background-color: #fcfcfc; overflow: hidden; /* overflow prevents floats not being enclosed - see http://gtwebdev.com/workshop/floats/enclosing-floats.php */}
 			div.graybox:hover {background-color: #fafafa; border-color: #aaa;}
@@ -3026,7 +3028,7 @@ r.generateReport()
 			
 			# Add the heading
 			$listing .= "\n<hr />";
-			$listing .= "\n<h2 id=\"election{$electionNumber}\">" . htmlspecialchars ($electionInfo[0]) . '</h2>';
+			$listing .= "\n<h2 id=\"election{$electionNumber}\" class=\"electionresult\"><a class=\"resultpermalink\" href=\"#election{$electionNumber}\" title=\"Permalink to this result\">#</a> " . htmlspecialchars ($electionInfo[0]) . '</h2>';
 			
 			# Branch to FPTP counting for a referendum
 			if ((count ($electionInfo) == 2) && $electionInfo[1] == 'referendum') {
