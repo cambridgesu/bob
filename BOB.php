@@ -2496,6 +2496,9 @@ class BOB
 	# Results page
 	private function results ()
 	{
+		# Set a flag for whether the results are considered preliminary (rather than checked and final)
+		$resultsCheckedFinalised = false;
+		
 		# End if not viewable
 		if (!$this->votesViewable ()) {
 			echo "\n<p>Viewing the counted results is not yet possible.</p>";
@@ -2536,6 +2539,11 @@ class BOB
 					return false;
 				}
 			}
+			
+			# If final, set the flag to indicate these are actually checked results (rather than purely auto-generated)
+			if ($this->additionalVotesFileFinal) {
+				$resultsCheckedFinalised = true;
+			}
 		}
 		
 		# Disable if no counting installation set
@@ -2546,7 +2554,7 @@ class BOB
 		}
 		
 		# Explain this page
-		echo "\n<p>This page shows the election results.<br />These have been calculated by taking the <a href=\"./?showvotes#votes\">raw vote data</a> in <a href=\"./?showvotes#blt\">.BLT format</a>, which you can view, and have been authorised for publication by the Returning Officer.</p>";
+		echo "\n<p>This page shows the election results.<br />These have been calculated by taking the <a href=\"./?showvotes#votes\">raw vote data</a> in <a href=\"./?showvotes#blt\">.BLT format</a>, which you can view" . ($resultsCheckedFinalised ? ', and have been authorised for publication by the Returning Officer.' : '') . '</p>';
 		echo "\n<p>(You can repeat the result calculations yourself on a desktop computer, if you wish, using a program such as <a href=\"http://www.openstv.org/\" target=\"_blank\">OpenSTV</a> and using the BLT data on the <a href=\"./?showvotes#blt\">raw vote data</a> page.)</p>";
 		
 		# Get the data as raw ballots and formatted BLTs
@@ -2558,7 +2566,7 @@ class BOB
 		list ($ballots, $blts, $listing) = $votesBlt;
 		
 		# Count the data and show the results
-		$this->countBlt ($ballots, $blts);
+		$this->countBlt ($ballots, $blts, $resultsCheckedFinalised);
 	}
 	
 	
@@ -2975,7 +2983,7 @@ class BOB
 	
 	
 	# Function to perform a count based on BLT listings
-	private function countBlt ($ballots, $blts)
+	private function countBlt ($ballots, $blts, $resultsCheckedFinalised)
 	{
 		# Chop final openstv/ component off end, as the Python integration assumes the containing directory
 		$countingInstallation = realpath ($this->config['countingInstallation'] . '../') . '/';
@@ -3012,11 +3020,13 @@ r.generateReport()
 			$electionNumber = $electionIndex + 1;
 			$dropList[$electionNumber] = "<li><a href=\"#election{$electionNumber}\">" . htmlspecialchars ($electionInfo[0]) . '</a></li>';
 		}
-		echo "\n<div class=\"warningbox\">";
-		echo "\n<p class=\"warning\"><strong>IMPORTANT</strong>:</p>";
-		echo "\n<p class=\"warning\">Any results noted here are preliminary/indicative calculations.<br />Only the declaration of the Returning Officer shall indicate finalised results.</p>";
-		echo "\n<p class=\"warning\">These results have been counted from the raw data automatically using OpenSTV. It is possible that any counting system may have bugs. The Returning Officer is responsible for the accuracy of that count and repeating it using a different counting program if wished.</p>";
-		echo "\n</div>";
+		if (!$resultsCheckedFinalised) {
+			echo "\n<div class=\"warningbox\">";
+			echo "\n<p class=\"warning\"><strong>IMPORTANT</strong>:</p>";
+			echo "\n<p class=\"warning\">Any results noted here are preliminary/indicative calculations.<br />Only the declaration of the Returning Officer shall indicate finalised results.</p>";
+			echo "\n<p class=\"warning\">These results have been counted from the raw data automatically using OpenSTV. It is possible that any counting system may have bugs. The Returning Officer is responsible for the accuracy of that count and repeating it using a different counting program if wished.</p>";
+			echo "\n</div>";
+		}
 		if (count ($dropList) > 1) {
 			echo "\n<p>Jump to results below for:</p>" . "\n<ul>" . implode ("\n\t", $dropList) . "\n</ul>";
 		}
