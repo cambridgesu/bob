@@ -3023,8 +3023,7 @@ r.generateReport()
 		if (!$resultsCheckedFinalised) {
 			echo "\n<div class=\"warningbox\">";
 			echo "\n<p class=\"warning\"><strong>IMPORTANT</strong>:</p>";
-			echo "\n<p class=\"warning\">Any results noted here are preliminary/indicative calculations.<br />Only the declaration of the Returning Officer shall indicate finalised results.</p>";
-			echo "\n<p class=\"warning\">These results have been counted from the raw data automatically using OpenSTV. It is possible that any counting system may have bugs. The Returning Officer is responsible for the accuracy of that count and repeating it using a different counting program if wished.</p>";
+			echo "\n<p class=\"warning\">Any results noted here are preliminary/indicative calculations, from an automated counting program (OpenSTV) using the raw data.<br />Only the declaration of the Returning Officer, who is responsible for confirming the accuracy of the count, shall indicate finalised results.</p>";
 			echo "\n</div>";
 		}
 		if (count ($dropList) > 1) {
