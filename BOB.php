@@ -2512,8 +2512,8 @@ class BOB
 			
 			# Since the additional votes functionality is now confirmed enabled, tell the user if the Returning Officer has not added it yet
 			if (!$this->additionalVotesFile) {
-				echo "\n<p>This election is being conducted using paper votes also.</p>";
-				echo "\n<p>The Returning Officer has the option to add the paper votes into this system, though this has not been done as yet. Therefore, results cannot at present be displayed automatically.</p>";
+				echo "\n<p>This election is being conducted using paper votes in addition to online votes.</p>";
+				echo "\n<p>The Returning Officer has the option to add the paper votes into this system, though this has not been done as yet. Therefore, results cannot at present be displayed.</p>";
 				echo "\n<p>Please check back here later, or look out for an announcement.</p>";
 				return false;
 			}
@@ -2544,7 +2544,7 @@ class BOB
 		}
 		
 		# Explain this page
-		echo "\n<p>This page shows the election results.<br />This has been calculated by taking the <a href=\"./?showvotes#votes\">raw vote data</a> in <a href=\"./?showvotes#blt\">.BLT format</a>, which you can view.</p>";
+		echo "\n<p>This page shows the election results.<br />These have been calculated by taking the <a href=\"./?showvotes#votes\">raw vote data</a> in <a href=\"./?showvotes#blt\">.BLT format</a>, which you can view, and have been authorised for publication by the Returning Officer.</p>";
 		echo "\n<p>(You can repeat the result calculations yourself on a desktop computer, if you wish, using a program such as <a href=\"http://www.openstv.org/\" target=\"_blank\">OpenSTV</a> and using the BLT data on the <a href=\"./?showvotes#blt\">raw vote data</a> page.)</p>";
 		
 		# Get the data as raw ballots and formatted BLTs
