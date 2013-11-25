@@ -3626,7 +3626,7 @@ r.generateReport()
 		$html .= "\n" . '<p><strong>Your file has been correctly saved, and reads as below.</strong></p>';
 		if ($statusValue == 'draft') {
 			$html .= "\n" . '<p><strong>Please <a href="./?results">check the results page</a></strong> to ensure this is correct. Currently the data is only visible to you as Returning Officer.</p>';
-			$html .= "\n" . '<p><strong>You must then <a href="./?admin_additionalvotes">re-enter the data, but as final</a></strong> for it to be visible to all users.</p>';
+			$html .= "\n" . '<p><strong>You must then <a href="./?admin_additionalvotes">return to set the data as final</a></strong> for it to be visible to all users.</p>';
 		} else {
 			$html .= "\n" . '<p><strong>The <a href="./?results">combined, final result</a> is now visible</strong> to those on the electoral roll.</p>';
 		}
