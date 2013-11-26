@@ -15,7 +15,7 @@
  *
  * Token word list Copyright The Internet Society (1998).
  *
- * Version 1.1.9
+ * Version 1.1.10
  *
  * Copyright (C) authors as above
  * 
@@ -3072,7 +3072,7 @@ r.generateReport()
 			if ($output) {
 				# If the vote is tied, the system must not generate an output, because a page refresh will re-run the randomisation
 				#!# The full solution here is that the results should be cached once run
-				if (substr_count ($output, 'by breaking the tie randomly')) {
+				if (substr_count (str_replace (array ("\n", '  '), ' ', $output), 'by breaking the tie randomly')) {
 					$listing .= "\n<p>This ballot was <strong>tied</strong>, so the Returning Officer will need to re-calculate the results manually from the <a href=\"./?showvotes#blt\">raw vote data</a> and toss a coin to determine the winner of this ballot.</p>";
 				} else {
 					$listing .= $this->cleanCountOutput ($output);
