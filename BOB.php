@@ -2830,7 +2830,8 @@ class BOB
 			
 			# Return false if any row has more/less cells than headers
 			if (count ($cells) != $totalHeaders) {
-				$errorMessage = "Row " . ($rowNumber + 1) . " does not match the number of header titles in the first row.";	// Show row number as human number, not zero-indexed
+				$errorMessage  = "Row " . ($rowNumber + 1) . " does not match the number of header titles in the first row.";	// Show row number as human number, not zero-indexed
+				$errorMessage .= '<br />Please check you are using Excel 2007 or later, as Excel 2003 has a <a href="http://support.microsoft.com/kb/77295" target="_blank">inconsistent columns bug</a>.';	// This seems to affect pasting in from the GUI of a .xls file also. See also http://excel.tips.net/T003068_Inconsistent_Output_for_Empty_Columns_in_a_CSV_File.html
 				return false;
 			}
 			
