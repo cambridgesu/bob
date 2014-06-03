@@ -1070,6 +1070,7 @@ class BOB
 			div.problem {color: red; border: 2px solid red; padding: 2px 10px;}
 			option {color: #603;}
 			.comment {color: #444;}
+			.heavilyfaded {color: #eee;}
 			p.loggedinas {text-align: right;}
 			p.navigationmenu {float: right; margin-left: 20px; color: gray;}
 			h2.unit, h2.paperballots {page-break-before: always;}
@@ -2790,7 +2791,7 @@ class BOB
 		
 		# Convert CSV to array
 		$serialKeyPrefixRequired = $this->additionalVotePrefix;		// Prefix for key names which must exist in serial from 1 without gaps (i.e. additionalvote1,additionalvote2,...); this also provides a namespace to avoid clashes with the standard token list, so that merging is safe
-		$data = $this->csvToArray ($contents, $separator = ',', $fieldnames, $serialKeyPrefixRequired, $csvErrorMessage);
+		$data = $this->csvToArray ($contents, $separator = ',', $fieldnames, $serialKeyPrefixRequired, $emptyCellToCharacter = '0', $csvErrorMessage);
 		if ($csvErrorMessage) {
 			$errorMessage = $csvErrorMessage;
 			return array ();	// Return no results
@@ -2802,7 +2803,7 @@ class BOB
 	
 	
 	# Helper function to process a character-separated values string to an associative array
-	private function csvToArray ($string, $separator = ',', $expectedHeaders, $serialKeyPrefixRequired = false, &$errorMessage = '')
+	private function csvToArray ($string, $separator = ',', $expectedHeaders, $serialKeyPrefixRequired = false, $emptyCellToCharacter = false, &$errorMessage = '')
 	{
 		# Start an array of data to fill
 		$data = array ();
@@ -2859,6 +2860,13 @@ class BOB
 				
 				# Determine the fieldname
 				$fieldname = $headers[$index];
+				
+				# If required, convert empty string to specified character
+				if (is_string ($emptyCellToCharacter)) {
+					if (!strlen ($cell)) {
+						$cell = $emptyCellToCharacter;
+					}
+				}
 				
 				# Allocate the cell into the final data
 				$data[$rowId][$fieldname] = $cell;
@@ -3559,7 +3567,7 @@ r.generateReport()
 		$additionalVotesErrorMessage = false;
 		$csvData = array ();
 		if ($formSubmitted && $additionalVotesValue) {
-			$csvData = $this->csvToArray ($additionalVotesValue, $separator = "\t", $fieldnames, $this->additionalVotePrefix, $additionalVotesErrorMessage);
+			$csvData = $this->csvToArray ($additionalVotesValue, $separator = "\t", $fieldnames, $this->additionalVotePrefix, $emptyCellToCharacter = '0', $additionalVotesErrorMessage);
 		}
 		
 		# If the paper vote takes place after the online vote, i.e. uses the same electoral roll, ensure the total number of submitted votes is not more than the number of voters
@@ -3610,7 +3618,8 @@ r.generateReport()
 		# Describe the format
 		$html .= "\n" . '<p class=\"comment\">The first row must be of the fieldnames, i.e.: <em>' . implode ("\t", $fieldnames) . '</em> .<br />';
 		$html .= "\n" . "Each result row must begin with a token starting <em>{$this->additionalVotePrefix}</em>, i.e. <em>{$this->additionalVotePrefix}1</em> then <em>{$this->additionalVotePrefix}2</em>, etc., one vote set per line.<br />";
-		$html .= "\n" . "There must not be any empty rows between the lines.</p>";
+		$html .= "\n" . "There must not be any empty rows between the lines.<br />";
+		$html .= "\n" . "If no expression of a preference, insert either 0 or leave the cell empty. If left empty, the system will insert the value 0 upon submission in such cases.</p>";
 		$html .= "\n" . '<p><em>Example:</em></p>';
 		$html .= "\n" . $this->samplePaperVotesSpreadsheet ($fieldnames);
 		
@@ -3675,6 +3684,7 @@ r.generateReport()
 					$choiceIndex = array_rand ($availableChoices);	// Make a choice
 					$result = $availableChoices[$choiceIndex];	// Select the value
 					unset ($availableChoices[$choiceIndex]);	// Remove from list
+					if ($result == '0') {$result = '<span class="heavilyfaded">0</span>';}	// 0 is optional, so show heavily faded-out
 					$html .= "\n\t<td>" . $result . '</td>';
 				}
 			}
