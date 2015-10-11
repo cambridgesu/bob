@@ -215,7 +215,7 @@ CREATE TABLE IF NOT EXISTS `instances` (
    `referendumThresholdPercent` int(2) default '10' COMMENT 'Percentage of voters who must cast a vote in a referendum for the referendum to be countable',
    `ballotStart` datetime NOT NULL COMMENT 'Start date/time of the ballot',
    `ballotEnd` datetime NOT NULL COMMENT 'End date/time of the ballot',
-   `paperVotingEnd` datetime NULL COMMENT 'End time of paper voting, if paper voting is also taking place',
+   `paperVotingEnd` datetime default NULL COMMENT 'End time of paper voting, if paper voting is also taking place',
 -- `instanceCompleteTimestamp` datetime default NULL COMMENT 'Timestamp for when the instance (configuration and voters list) is complete',
    PRIMARY KEY  (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
