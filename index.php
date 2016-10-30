@@ -38,6 +38,9 @@ $config['randomisationInfo'] = false;	// Will have htmlspecialchars applied to i
 # Percentage of voters who must cast a vote in a referendum for the referendum to be countable
 $config['referendumThresholdPercent'] = 10;
 
+# Referenda pass if simple majority, but also requires either: (false, the default) x% to turn up to vote, or (true) yes-vote count not less than x% of eligible voters
+$config['referendumThresholdIsYesVoters'] = false;
+
 # Extra messages (as HTML), if any, which people will see on the front page before voting, and when they have voted
 $config['frontPageMessageHtml'] = false;
 $config['afterVoteMessageHtml'] = false;

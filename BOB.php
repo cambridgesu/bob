@@ -15,7 +15,7 @@
  *
  * Token word list Copyright The Internet Society (1998).
  *
- * Version 1.1.10
+ * Version 1.1.11
  *
  * Copyright (C) authors as above
  * 
@@ -47,7 +47,7 @@
 <?php
 
 ## Config file for BOB ##
-## All settings must be specified, except for these (which will revert to internal defaults if omitted): dbHostname,countingInstallation,countingMethod,urlMoreInfo,adminDuringElectionOK,randomisationInfo,referendumThresholdPercent,frontPageMessageHtml,afterVoteMessageHtml,voterReceiptDisableable,disableListWhoVoted,organisationName,organisationUrl,organisationLogoUrl,headerLocation,footerLocation,additionalVotesCsvDirectory
+## All settings must be specified, except for these (which will revert to internal defaults if omitted): dbHostname,countingInstallation,countingMethod,urlMoreInfo,adminDuringElectionOK,randomisationInfo,referendumThresholdPercent,referendumThresholdIsYesVoters,frontPageMessageHtml,afterVoteMessageHtml,voterReceiptDisableable,disableListWhoVoted,organisationName,organisationUrl,organisationLogoUrl,headerLocation,footerLocation,additionalVotesCsvDirectory
 
 # Unique identifier for this ballot
 $config['id'] = 'testelection';
@@ -83,6 +83,9 @@ $config['randomisationInfo'] = false;	// Will have htmlspecialchars applied to i
 
 # Percentage of voters who must cast a vote in a referendum for the referendum to be countable
 $config['referendumThresholdPercent'] = 10;
+
+# Referenda pass if simple majority, but also requires either: (false, the default) x% to turn up to vote, or (true) yes-vote count not less than x% of eligible voters
+$config['referendumThresholdIsYesVoters'] = false;
 
 # Extra messages (as HTML), if any, which people will see on the front page before voting, and when they have voted
 $config['frontPageMessageHtml'] = false;
@@ -176,7 +179,7 @@ $config['countingMethod'] = 'ERS97STV';
 
 # The database table should contain these fields, in addition to id as above:
 # title,urlMoreInfo,emailReturningOfficer,emailTech,officialsUsernames,ballotStart,ballotEnd,paperVotingEnd,randomisationInfo,referendumThresholdPercent,frontPageMessageHtml,afterVoteMessageHtml,voterReceiptDisableable,disableListWhoVoted,adminDuringElectionOK,organisationName,organisationUrl,organisationLogoUrl,headerLocation,footerLocation,additionalVotesCsvDirectory,electionInfo
-# However, urlMoreInfo,referendumThresholdPercent,frontPageMessageHtml,afterVoteMessageHtml,voterReceiptDisableable,disableListWhoVoted,adminDuringElectionOK,headerLocation,footerLocation,additionalVotesCsvDirectory are optional fields which need not be created
+# However, urlMoreInfo,referendumThresholdPercent,referendumThresholdIsYesVoters,frontPageMessageHtml,afterVoteMessageHtml,voterReceiptDisableable,disableListWhoVoted,adminDuringElectionOK,headerLocation,footerLocation,additionalVotesCsvDirectory are optional fields which need not be created
 
 
 ## End of config; now run the system ##
@@ -213,6 +216,7 @@ CREATE TABLE IF NOT EXISTS `instances` (
    `electionInfo` text COLLATE utf8_unicode_ci NOT NULL COMMENT 'Election info: Number of positions being elected; Position title; Names of candidates; each block separated by one line break',
 -- `electionInfoAsEntered` text COLLATE utf8_unicode_ci NOT NULL COMMENT 'Election info',
    `referendumThresholdPercent` int(2) DEFAULT '10' COMMENT 'Percentage of voters who must cast a vote in a referendum for the referendum to be countable',
+   `referendumThresholdIsYesVoters` int(1) DEFAULT NULL COMMENT 'Whether the threshold refers to yes-vote level (rather than all voter turnout)',
    `ballotStart` datetime NOT NULL COMMENT 'Start date/time of the ballot',
    `ballotEnd` datetime NOT NULL COMMENT 'End date/time of the ballot',
    `paperVotingEnd` datetime DEFAULT NULL COMMENT 'End time of paper voting, if paper voting is also taking place',
@@ -458,6 +462,7 @@ class BOB
 		'officialsUsernames'			=> NULL,
 		'randomisationInfo'				=> false,
 		'referendumThresholdPercent'	=> 10,
+		'referendumThresholdIsYesVoters'	=> false,
 		'adminDuringElectionOK'			=> false,
 		'ballotStart'					=> NULL,
 		'ballotEnd'						=> NULL,
@@ -3197,14 +3202,26 @@ r.generateReport()
 		
 		# Show the result
 		if ($isReferendum) {
+			
+			# Determine the numeric threshold
 			$threshold = $this->registeredVoters * ($this->config['referendumThresholdPercent'] / 100);
-			if ($totalVotes >= $threshold) {
-				$yesLabel = $this->referendumCandidates[1];
-				$noLabel = $this->referendumCandidates[2];
-				$passed = ($counts[$yesLabel] > $counts[$noLabel]);	// A referendum must have YES higher than NO
- 				$html .= "\n<p class=\"winner\">The referendum was " . ($passed ? '<strong>PASSED</strong> (and the turnout threshold of ' . htmlspecialchars ($this->config['referendumThresholdPercent']) . '% was reached)' : '<strong>NOT passed</strong>') . '.</p>';
+			
+			# Determine whether the threshold has been reached
+			$yesLabel = $this->referendumCandidates[1];
+			$noLabel = $this->referendumCandidates[2];
+			if ($this->config['referendumThresholdIsYesVoters']) {
+				$thresholdReached = ($counts[$yesLabel] >= $threshold);
 			} else {
-				$html .= "\n<p class=\"winner\">Referendum NOT passed: the referendum voter turnout threshold of " . htmlspecialchars ($this->config['referendumThresholdPercent']) . "% was not reached.</p>";
+				$thresholdReached = ($totalVotes >= $threshold);
+			}
+			
+			# Show the result (or threshold not reached)
+			$thresholdDescription = ($this->config['referendumThresholdIsYesVoters'] ? 'yes-voter' : 'voter turnout');
+			if ($thresholdReached) {
+				$passed = ($counts[$yesLabel] > $counts[$noLabel]);	// A referendum must have YES higher than NO
+				$html .= "\n<p class=\"winner\">The referendum was " . ($passed ? "<strong>PASSED</strong> (and the {$thresholdDescription} threshold of " . htmlspecialchars ($this->config['referendumThresholdPercent']) . '% was reached)' : '<strong>NOT passed</strong>') . '.</p>';
+			} else {
+				$html .= "\n<p class=\"winner\">Referendum NOT passed: the referendum {$thresholdDescription} threshold of " . htmlspecialchars ($this->config['referendumThresholdPercent']) . "% was not reached.</p>";
 			}
 		} else {
 			# State the winners
