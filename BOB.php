@@ -3198,7 +3198,7 @@ r.generateReport()
 		# Show the result
 		if ($isReferendum) {
 			$threshold = $this->registeredVoters * ($this->config['referendumThresholdPercent'] / 100);
-			if ($totalVotes > $threshold) {
+			if ($totalVotes >= $threshold) {
 				$yesLabel = $this->referendumCandidates[1];
 				$noLabel = $this->referendumCandidates[2];
 				$passed = ($counts[$yesLabel] > $counts[$noLabel]);	// A referendum must have YES higher than NO
