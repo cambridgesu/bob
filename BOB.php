@@ -3202,7 +3202,7 @@ r.generateReport()
 				$yesLabel = $this->referendumCandidates[1];
 				$noLabel = $this->referendumCandidates[2];
 				$passed = ($counts[$yesLabel] > $counts[$noLabel]);	// A referendum must have YES higher than NO
-				$html .= "\n<p class=\"winner\">The referendum was " . ($passed ? '<strong>PASSED</strong> (and ' : '<strong>NOT passed</strong> (though ') . 'the turnout threshold of ' . htmlspecialchars ($this->config['referendumThresholdPercent']) . '% was reached).</p>';
+ 				$html .= "\n<p class=\"winner\">The referendum was " . ($passed ? '<strong>PASSED</strong> (and the turnout threshold of ' . htmlspecialchars ($this->config['referendumThresholdPercent']) . '% was reached)' : '<strong>NOT passed</strong>') . '.</p>';
 			} else {
 				$html .= "\n<p class=\"winner\">Referendum NOT passed: the referendum voter turnout threshold of " . htmlspecialchars ($this->config['referendumThresholdPercent']) . "% was not reached.</p>";
 			}
