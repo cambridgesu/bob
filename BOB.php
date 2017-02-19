@@ -144,7 +144,7 @@ ENDOFDATA;
 
 # Load and run the BOB class
 require_once ('BOB.php');
-new BOB ($config);
+new cusu\bob\BOB ($config);
 
 
  *	
@@ -186,7 +186,7 @@ $config['countingMethod'] = 'ERS97STV';
 
 # Load and run the BOB class
 require_once ('BOB.php');
-new BOB ($config);
+new cusu\bob\BOB ($config);
 
 
  *	
@@ -434,7 +434,7 @@ Explanation of BLT format
  */
 
 
-
+namespace cusu\bob;
 
 # PHP5 class to implement an online election system
 class BOB

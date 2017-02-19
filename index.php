@@ -99,6 +99,6 @@ ENDOFDATA;
 
 # Load and run the BOB class
 require_once ('BOB.php');
-new BOB ($config);
+new cusu\bob\BOB ($config);
 
 ?>
