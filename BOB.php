@@ -4,7 +4,7 @@
  * This file is part of the Basic Online Ballot-box (BOB).
  * https://github.com/cusu/bob
  * License: GPL; see below
- * Copyright David Eyers, Martin Lucas-Smith and contributors 2005-2013
+ * Copyright David Eyers, Martin Lucas-Smith and contributors 2005-2017
  *
  * Significant contributions (but almost certainly not responsible for any nasty code) :
  * David Turner, Simon Hopkins, Robert Whittaker
