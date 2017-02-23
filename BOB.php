@@ -638,7 +638,9 @@ class BOB
 		}
 		
 		# Connect to the database at the runtime user privilege level
-		if (!$this->openDatabaseConnection ($this->config['dbUsername'])) {
+		require_once ('./database.php');
+		$this->databaseConnection = new database ($this->config['dbHostname'], $this->config['dbUsername'], $this->config['dbPassword'], $this->config['dbDatabase'], $this->errors /* written to by reference */);
+		if (!$this->databaseConnection->connected ()) {
 			$this->errors[] = "... therefore the runtime database connection could not be established.";
 			$this->showErrors ();
 			return false;
@@ -781,7 +783,7 @@ class BOB
 		}
 		
 		# Explicitly the database connection
-		$this->closeDatabaseConnection ();
+		$this->databaseConnection->close ();
 	}
 	
 	
@@ -1005,8 +1007,10 @@ class BOB
 			$html .= "\n</div>";
 		}
 		
-		# Explicitly close the database connection to prevent further execution (this is otherwise done implicitly by PHP anyway at script end)
-		$this->closeDatabaseConnection ();
+		# Explicitly close the database connection, if it exists, to prevent further execution (this is otherwise done implicitly by PHP anyway at script end)
+		if (isSet ($this->databaseConnection)) {
+			$this->databaseConnection->close ();
+		}
 		
 		# Show the result
 		echo $html;
