@@ -937,9 +937,9 @@ class BOB
 			
 			# The paperVotingEnd setting, is not required; only perform the check and conversion to UNIX time below if not false/empty
 			if ($timeSetting == 'paperVotingEnd') {
-				if ($this->config['paperVotingEnd'] == '0000-00-00 00:00:00') {$this->config['paperVotingEnd'] = false;}	// Deal with 32/64 bit compatibility; see: http://stackoverflow.com/questions/141315
-				if (!$this->config['paperVotingEnd']) {
-					$this->config['paperVotingEnd'] = false;	// Explicitly cast false/NULL/0/''/'0'/etc. (see http://php.net/types.comparisons ) as false, to avoid persistence as some other equivalent of false
+				if ($this->config[$timeSetting] == '0000-00-00 00:00:00') {$this->config[$timeSetting] = false;}	// Deal with 32/64 bit compatibility; see: http://stackoverflow.com/questions/141315
+				if (!$this->config[$timeSetting]) {
+					$this->config[$timeSetting] = false;	// Explicitly cast false/NULL/0/''/'0'/etc. (see http://php.net/types.comparisons ) as false, to avoid persistence as some other equivalent of false
 					continue;
 				}
 			}
