@@ -1887,7 +1887,7 @@ class BOB
 		if ($this->splitElection) {
 			$html .= "\n\t<tr>\n\t\t<td>Paper voting closing time:</td>\n\t\t<td>" . $this->paperVotingEndFormatted . "</td>\n\t</tr>";
 		}
-		$html .= "\n\t<tr>\n\t\t<td>List of votes cast " . ($this->splitElection ? 'online ' : '') . "viewable at:</td>\n\t\t<td>" . $this->ballotViewableFormatted . "</td>\n\t</tr>";
+		$html .= "\n\t<tr>\n\t\t<td>List of votes cast " . ($this->splitElection ? 'online ' : '') . "viewable at:</td>\n\t\t<td>" . $this->ballotViewableDelayedFormatted . "</td>\n\t</tr>";
 		$html .= "\n\t<tr>\n\t\t<td>Total eligible registered " . ($this->splitElection ? 'online ' : '') . "voters:</td>\n\t\t<td>" . number_format ($this->registeredVoters) . ($this->beforeElection ? ' (This may change before the voting opens)' : '') . "</td>\n\t</tr>";
 		if ($this->config['randomisationInfo']) {$html .= "\n\t<tr>\n\t\t<td>Randomisation:</td>\n\t\t<td>" . htmlspecialchars ($this->config['randomisationInfo']) . "</td>\n\t</tr>";}
 		$html .= "\n\t<tr>\n\t\t<td>E-mail of Technical Administrator:</td>\n\t\t<td>" . htmlspecialchars ($this->config['emailTech']) . "</td>\n\t</tr>";
