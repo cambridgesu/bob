@@ -77,6 +77,7 @@ $config['officialsUsernames'] = 'abc12 xyz98';	// Space-separated
 $config['ballotStart'] = '2009-02-13 00:00:00';
 $config['ballotEnd'] = '2009-02-18 00:01:00';
 $config['paperVotingEnd'] = false;
+$config['ballotViewableDelayed'] = false;
 
 # Textual information about any randomisation which may have been made
 $config['randomisationInfo'] = false;	// Will have htmlspecialchars applied to it
@@ -178,7 +179,7 @@ $config['countingMethod'] = 'ERS97STV';
 
 
 # The database table should contain these fields, in addition to id as above:
-# title,urlMoreInfo,emailReturningOfficer,emailTech,officialsUsernames,ballotStart,ballotEnd,paperVotingEnd,randomisationInfo,referendumThresholdPercent,frontPageMessageHtml,afterVoteMessageHtml,voterReceiptDisableable,disableListWhoVoted,adminDuringElectionOK,organisationName,organisationUrl,organisationLogoUrl,headerLocation,footerLocation,additionalVotesCsvDirectory,electionInfo
+# title,urlMoreInfo,emailReturningOfficer,emailTech,officialsUsernames,ballotStart,ballotEnd,paperVotingEnd,ballotViewableDelayed,randomisationInfo,referendumThresholdPercent,frontPageMessageHtml,afterVoteMessageHtml,voterReceiptDisableable,disableListWhoVoted,adminDuringElectionOK,organisationName,organisationUrl,organisationLogoUrl,headerLocation,footerLocation,additionalVotesCsvDirectory,electionInfo
 # However, urlMoreInfo,referendumThresholdPercent,referendumThresholdIsYesVoters,frontPageMessageHtml,afterVoteMessageHtml,voterReceiptDisableable,disableListWhoVoted,adminDuringElectionOK,headerLocation,footerLocation,additionalVotesCsvDirectory are optional fields which need not be created
 
 
@@ -220,6 +221,7 @@ CREATE TABLE IF NOT EXISTS `instances` (
    `ballotStart` datetime NOT NULL COMMENT 'Start date/time of the ballot',
    `ballotEnd` datetime NOT NULL COMMENT 'End date/time of the ballot',
    `paperVotingEnd` datetime DEFAULT NULL COMMENT 'End time of paper voting, if paper voting is also taking place',
+   `ballotViewableDelayed` datetime NOT NULL COMMENT 'End date/time for delayed viewing of results by voters',
 -- `instanceCompleteTimestamp` datetime DEFAULT NULL COMMENT 'Timestamp for when the instance (configuration and voters list) is complete',
    PRIMARY KEY  (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
@@ -467,6 +469,7 @@ class BOB
 		'ballotStart'					=> NULL,
 		'ballotEnd'						=> NULL,
 		'paperVotingEnd'				=> false,
+		'ballotViewableDelayed'				=> false,
 		'frontPageMessageHtml'			=> false,
 		'afterVoteMessageHtml'			=> false,
 		'voterReceiptDisableable'			=> false,
@@ -687,6 +690,7 @@ class BOB
 		$this->duringElection = $this->duringElection ();
 		$this->afterElection = $this->afterElection ();
 		$this->afterBallotView = $this->afterBallotView ();
+		$this->afterBallotViewDelayed = $this->afterBallotViewDelayed ();
 		
 		# Ensure there are no votes before the start of the election
 		if ($this->beforeElection && $this->totalVoted) {
@@ -932,11 +936,11 @@ class BOB
 		}
 		
 		# Convert the times to unixtime
-		$timeSettings = array ('ballotStart', 'ballotEnd', 'paperVotingEnd');
+		$timeSettings = array ('ballotStart', 'ballotEnd', 'paperVotingEnd', 'ballotViewableDelayed');
 		foreach ($timeSettings as $timeSetting) {
 			
 			# The paperVotingEnd setting, is not required; only perform the check and conversion to UNIX time below if not false/empty
-			if ($timeSetting == 'paperVotingEnd') {
+			if (($timeSetting == 'paperVotingEnd') || ($timeSetting == 'ballotViewableDelayed')) {
 				if ($this->config[$timeSetting] == '0000-00-00 00:00:00') {$this->config[$timeSetting] = false;}	// Deal with 32/64 bit compatibility; see: http://stackoverflow.com/questions/141315
 				if (!$this->config[$timeSetting]) {
 					$this->config[$timeSetting] = false;	// Explicitly cast false/NULL/0/''/'0'/etc. (see http://php.net/types.comparisons ) as false, to avoid persistence as some other equivalent of false
@@ -973,11 +977,20 @@ class BOB
 		#!# Rename this variable to ballotsViewable for clarity perhaps
 		$this->ballotViewable = max ($this->config['ballotEnd'], $this->config['paperVotingEnd']);
 		
+		# Validate that any delayed ballot viewable time is not before the ballot viewable time
+		if ($this->config['ballotViewableDelayed']) {
+			if ($this->config['ballotViewableDelayed'] < $this->ballotViewable) {
+				$this->errors[] = "The time settings for this ballot in the configuration are wrong; the delayed ballot viewable time must be the same or after the ballot viewable time.";
+				return false;
+			}
+		}
+		
 		# Create formatted versions of each of the times
 		$this->ballotStartFormatted = date ('H:ia, l, jS F Y', $this->config['ballotStart']);
 		$this->ballotEndFormatted = date ('H:ia, l, jS F Y', $this->config['ballotEnd']);
 		$this->paperVotingEndFormatted = date ('H:ia, l, jS F Y', $this->config['paperVotingEnd']);
 		$this->ballotViewableFormatted = date ('H:ia, l, jS F Y', $this->ballotViewable);
+		$this->ballotViewableDelayedFormatted = date ('H:ia, l, jS F Y', $this->config['ballotViewableDelayed']);
 		
 		# Create an MD5 hash of BOB itself and a serialised version of the config
 		$this->bobMd5 = md5_file (__FILE__);
@@ -1742,6 +1755,13 @@ class BOB
 	private function afterBallotView ()
 	{
 		return ($this->ballotViewable < $this->loadtime);
+	}
+	
+	
+	# Function to determine whether have reached the point when the ballot is viewable by all voters
+	private function afterBallotViewDelayed ()
+	{
+		return ($this->config['ballotViewableDelayed'] < $this->loadtime);
 	}
 	
 	
