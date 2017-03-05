@@ -1856,8 +1856,8 @@ class BOB
 			$html .= "\n\t\t" . "<li class=\"showvotes\"><a href=\"./?results\">View results of election</a></li>";
 			$html .= "\n\t\t" . "<li class=\"spaced showvotes\"><a href=\"./?showvotes\">View list of votes cast" . ($this->splitElection ? ' electronically' : '') . ' (total ' . number_format ($this->totalVoted) . ')</a></li>';
 		}
-		if ($this->duringElection || ($this->splitElection && $this->afterElection && !$this->afterBallotView)) {
-			$html .= "\n\t\t" . '<li>You will be able to view the list of votes cast (which are used to calculate the results) here at<br />' . $this->ballotViewableFormatted . '.</li>';
+		if ($this->duringElection || ($this->splitElection && $this->afterElection && !$this->afterBallotViewDelayed)) {
+			$html .= "\n\t\t" . '<li>You will be able to view the list of votes cast (which are used to calculate the results) here at<br />' . $this->ballotViewableDelayedFormatted . '.</li>';
 		}
 		$html .= "\n\t</ul>";
 		$html .= "\n</div>";
