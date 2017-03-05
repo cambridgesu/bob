@@ -2631,8 +2631,13 @@ class BOB
 			return true;
 		}
 		
-		# Users can see results after ballot view
-		if ($this->afterBallotView) {
+		# Election officials can see results after ballot view
+		if ($this->userIsElectionOfficial && $this->afterBallotView) {
+			return true;
+		}
+		
+		# Users can see results after ballot view delayed (which may be the same as ballot view)
+		if ($this->afterBallotViewDelayed) {
 			return true;
 		}
 		
