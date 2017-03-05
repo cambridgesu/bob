@@ -977,12 +977,13 @@ class BOB
 		#!# Rename this variable to ballotsViewable for clarity perhaps
 		$this->ballotViewable = max ($this->config['ballotEnd'], $this->config['paperVotingEnd']);
 		
+		# Set the ballotViewableDelayed to be the same as ballotViewable if not specified
+		$this->ballotViewableDelayed = ($this->config['ballotViewableDelayed'] ? $this->config['ballotViewableDelayed'] : $this->ballotViewable);
+		
 		# Validate that any delayed ballot viewable time is not before the ballot viewable time
-		if ($this->config['ballotViewableDelayed']) {
-			if ($this->config['ballotViewableDelayed'] < $this->ballotViewable) {
-				$this->errors[] = "The time settings for this ballot in the configuration are wrong; the delayed ballot viewable time must be the same or after the ballot viewable time.";
-				return false;
-			}
+		if ($this->ballotViewableDelayed < $this->ballotViewable) {
+			$this->errors[] = "The time settings for this ballot in the configuration are wrong; the delayed ballot viewable time must be the same or after the ballot viewable time.";
+			return false;
 		}
 		
 		# Create formatted versions of each of the times
@@ -990,7 +991,7 @@ class BOB
 		$this->ballotEndFormatted = date ('H:ia, l, jS F Y', $this->config['ballotEnd']);
 		$this->paperVotingEndFormatted = date ('H:ia, l, jS F Y', $this->config['paperVotingEnd']);
 		$this->ballotViewableFormatted = date ('H:ia, l, jS F Y', $this->ballotViewable);
-		$this->ballotViewableDelayedFormatted = date ('H:ia, l, jS F Y', $this->config['ballotViewableDelayed']);
+		$this->ballotViewableDelayedFormatted = date ('H:ia, l, jS F Y', $this->ballotViewableDelayed);
 		
 		# Create an MD5 hash of BOB itself and a serialised version of the config
 		$this->bobMd5 = md5_file (__FILE__);
@@ -1761,7 +1762,7 @@ class BOB
 	# Function to determine whether have reached the point when the ballot is viewable by all voters
 	private function afterBallotViewDelayed ()
 	{
-		return ($this->config['ballotViewableDelayed'] < $this->loadtime);
+		return ($this->ballotViewableDelayed < $this->loadtime);
 	}
 	
 	
