@@ -2623,10 +2623,21 @@ class BOB
 	}
 	
 	
-	# Function to determine if the votes are viewable
+	# Function to determine if the votes are viewable by the current user
 	private function votesViewable ()
 	{
-		return ($this->afterBallotView || ($this->userIsElectionOfficial && $this->config['adminDuringElectionOK']));
+		# Election officials can see votes if admin during election is OK
+		if ($this->userIsElectionOfficial && $this->config['adminDuringElectionOK']) {
+			return true;
+		}
+		
+		# Users can see results after ballot view
+		if ($this->afterBallotView) {
+			return true;
+		}
+		
+		# No access
+		return false;
 	}
 	
 	
