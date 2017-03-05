@@ -2569,6 +2569,11 @@ class BOB
 			return false;
 		}
 		
+		# If the user is an election official, and delayed ballot viewing is in play, show a reminder
+		if ($this->userIsElectionOfficial && $this->afterBallotView && !$this->afterBallotViewDelayed) {
+			echo "\n<p><em>Note: You can only access this page currently because you are an election official. It is not yet available to ordinary voters.</em></p>";
+		}
+		
 		# For a split (electronic and paper) election, check and show status on automatic vote counting
 		if ($this->splitElection) {
 			
@@ -2664,6 +2669,11 @@ class BOB
 		if (!$this->votesViewable ()) {
 			echo "\n<p>Viewing the ballot box is not yet possible.</p>";
 			return false;
+		}
+		
+		# If the user is an election official, and delayed ballot viewing is in play, show a reminder
+		if ($this->userIsElectionOfficial && $this->afterBallotView && !$this->afterBallotViewDelayed) {
+			echo "\n<p><em>Note: You can only access this page currently because you are an election official. It is not yet available to ordinary voters.</em></p>";
 		}
 		
 		# Add a jump list
