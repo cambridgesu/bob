@@ -1846,7 +1846,13 @@ class BOB
 		if ($this->afterElection) {
 			$html .= "\n\t\t" . '<li><strong>Current status:</strong> The ballot has now closed.</li>';
 		}
-		if ($this->afterBallotView) {
+		if ($this->afterBallotView && !$this->afterBallotViewDelayed) {
+			$html .= "\n\t\t" . '<li>Results and vote data will be visible' . ($this->userIsElectionOfficial ? ' <strong>to ordinary voters</strong>' : '') . ' from ' . $this->ballotViewableDelayedFormatted . '.</li>';
+			if ($this->userIsElectionOfficial) {
+				$html .= "\n\t\t" . '<p>As an election official, you are able to view the results and votes data already (but can in no way amend these):</p>';
+			}
+		}
+		if ($this->afterBallotViewDelayed || ($this->userIsElectionOfficial && $this->afterBallotView)) {
 			$html .= "\n\t\t" . "<li class=\"showvotes\"><a href=\"./?results\">View results of election</a></li>";
 			$html .= "\n\t\t" . "<li class=\"spaced showvotes\"><a href=\"./?showvotes\">View list of votes cast" . ($this->splitElection ? ' electronically' : '') . ' (total ' . number_format ($this->totalVoted) . ')</a></li>';
 		}
