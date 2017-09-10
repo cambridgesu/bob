@@ -828,7 +828,7 @@ class BOB
 			# Obtain the current fields; no error handling needed as we know that the table exists; the escaping is used just in case the admin has specified a stupid table name in the config, though this is not a security issue
 			# Note there is no problem if this table has additional fields - these will be ignored in the mergeConfiguration() routine and will never get past that into the rest of the system
 			$query = "SELECT * FROM `{$this->config['dbDatabase']}`.`{$this->config['dbConfigTable']}` WHERE id = '" . mysqli_real_escape_string ($this->dbLink, $this->config['id']) . "' LIMIT 1;";
-			if (!$data = $this->getData ($query)) {
+			if (!$data = $this->databaseConnection->getData ($query)) {
 				
 				# If there is no staging database specified, throw an error
 				if (!$this->config['dbDatabaseStaging']) {
@@ -838,7 +838,7 @@ class BOB
 					
 					# Now try to fallback to the staging database, ensuring that it is for a ballot that has not yet opened (which therefore prevents the use of the staging database for live votes)
 					$query = "SELECT * FROM `{$this->config['dbDatabaseStaging']}`.`{$this->config['dbConfigTable']}` WHERE id = '" . mysqli_real_escape_string ($this->dbLink, $this->config['id']) . "' AND NOW() < ballotStart LIMIT 1;";
-					if (!$data = $this->getData ($query)) {
+					if (!$data = $this->databaseConnection->getData ($query)) {
 						$this->errors[] = "A database-stored configuration in the '<strong>" . htmlspecialchars ("{$this->config['dbDatabaseStaging']}.{$this->config['dbConfigTable']}") . "</strong>' staging table for an election with id '<strong>" . htmlspecialchars ($this->config['id']) . "</strong>' was specified but it could not be retrieved.";
 						return false;
 					}
@@ -1494,10 +1494,11 @@ class BOB
 	{
 		# Check that the table type is InnoDB; the features used in BOB are the use of transactions and automatic key ordering
 		$query = "SHOW TABLE STATUS LIKE '{$name}';";	// LIKE does do an exact match here; using only a substring fails to return any results
-		if (!$data = $this->getData ($query)) {
+		if (!$data = $this->databaseConnection->getData ($query)) {
 			$this->errors[] = "The table status for the table name {$name} could not be retrieved.";
 			return false;
 		}
+		
 		$engine = $data[0]['Engine'];
 		if ($engine != 'InnoDB') {
 			$this->errors[] = "The table {$name} is not using the InnoDB storage engine.";
@@ -1506,7 +1507,7 @@ class BOB
 		
 		# Obtain the current fields; error handling not really needed as we know that the table exists
 		$query = "SHOW FULL FIELDS FROM `{$this->config['dbDatabase']}`.`{$name}`;";
-		if (!$data = $this->getData ($query)) {
+		if (!$data = $this->databaseConnection->getData ($query)) {
 			$this->errors[] = "The field status for the table name {$name} could not be retrieved.";
 			return false;
 		}
@@ -1558,31 +1559,6 @@ class BOB
 	}
 	
 	
-	# Generalised function to get data from an SQL query and return it as an array
-	#!# Add failures as an explicit return false; this is not insecure at present though as array() will be retured (equating to boolean false), with the calling code then stopping execution in each case
-	private function getData ($query)
-	{
-		# Create an empty array to hold the data
-		$data = array ();
-		
-		# Execute the query or return false on failure
-		if ($result = mysqli_query ($this->dbLink, $query)) {
-			
-			# Check that the table contains data
-			if (mysqli_num_rows ($result) > 0) {
-				
-				# Loop through each row and add the data to it
-				while ($row = mysqli_fetch_assoc ($result)) {
-					$data[] = $row;
-				}
-			}
-		}
-		
-		# Return the array
-		return $data;
-	}
-	
-	
 	# Function to obtain a list of tables in a database
 	#!# Add failures as an explicit return false; this is not insecure at present though as array() will be retured (equating to boolean false), with the calling code then stopping execution in each case
 	private function getTables ($database)
@@ -1620,7 +1596,7 @@ class BOB
 			
 			# Obtain the current fields; error handling not really needed as we know that the table exists; note that we cannot reuse the same call in validateTableFields as that was running under the setup user
 			$query = "SHOW FULL FIELDS FROM `{$this->config['dbDatabase']}`.`{$table}`;";
-			if (!$fields = $this->getData ($query)) {
+			if (!$fields = $this->databaseConnection->getData ($query)) {
 				$this->errors[] = "The full fields status for the table name {$table} could not be retrieved.";
 				return false;
 			}
@@ -1650,7 +1626,7 @@ class BOB
 	{
 		# Get the total; there is not really any need for error handling as readability will have been checked in verifyRuntimeDatabasePrivileges()
 		$query = "SELECT COUNT(*) AS total FROM `{$this->voterTable}`;";
-		if (!$data = $this->getData ($query)) {
+		if (!$data = $this->databaseConnection->getData ($query)) {
 			$this->errors[] = "The count for the voter table could not be retrieved.";
 			return false;
 		}
@@ -1682,7 +1658,7 @@ class BOB
 			UNION ALL
 			SELECT COUNT(*) AS total FROM `{$this->votesTable}`
 		;";
-		if (!$data = $this->getData ($query)) {
+		if (!$data = $this->databaseConnection->getData ($query)) {
 			$this->errors[] = 'There was a problem checking the number of votes.';
 			return false;
 		}
@@ -3322,7 +3298,7 @@ r.generateReport()
 		
 		# Get the data
 		$query = "SELECT username,unit,forename,surname,voted FROM `{$this->voterTable}` ORDER BY unit,surname,forename;";
-		if (!$voterData = $this->getData ($query)) {
+		if (!$voterData = $this->databaseConnection->getData ($query)) {
 			echo "\n<p>There was a problem getting the voter data.</p>";
 			return false;
 		}

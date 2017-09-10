@@ -65,6 +65,31 @@ class database
 		}
 	}
 	
+	
+	# Generalised function to get data from an SQL query and return it as an array
+	#!# Add failures as an explicit return false; this is not insecure at present though as array() will be retured (equating to boolean false), with the calling code then stopping execution in each case
+	public function getData ($query)
+	{
+		# Create an empty array to hold the data
+		$data = array ();
+		
+		# Execute the query or return false on failure
+		if ($result = mysqli_query ($this->connection, $query)) {
+			
+			# Check that the table contains data
+			if (mysqli_num_rows ($result) > 0) {
+				
+				# Loop through each row and add the data to it
+				while ($row = mysqli_fetch_assoc ($result)) {
+					$data[] = $row;
+				}
+			}
+		}
+		
+		# Return the array
+		return $data;
+	}
+	
 }
 
 ?>
