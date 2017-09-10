@@ -2614,25 +2614,22 @@ class BOB
 	# Function to get the cast vote data
 	private function getVoteData (&$errorMessage = false)
 	{
-		# Get the votes, and order them by token so that it is easier for voters to find their token in an alphabetical list
-		if(!($result = mysqli_query ($this->dbLink, "SELECT * FROM `{$this->votesTable}`;"))) return ($this->error ("Vote list read failed."));
+		# Get the votes, ordered by token so that it is easier for voters to find their token in an alphabetical list
+		#!# Cannot currently disambiguate scenario where no-one voted
+		$query = "SELECT * FROM `{$this->votesTable}`;";
+		if (!$data = $this->databaseConnection->getData ($query)) {
+			return ($this->error ('Vote list read failed.'));
+		}
+		
+		# Arrange as token -> list
+		$castVotes = array ();
+		foreach ($data as $row) {
+			$token = array_shift ($row);	// Skip the token, but store it for use as an index
+			$castVotes[$token] = $row;
+		}
 		
 		# Create an array of the fieldnames
-		$fieldnames = array ();
-		$fields = mysqli_num_fields ($result);
-		for ($count = 0; $count < $fields; $count++) {
-			$fieldInfo = mysqli_fetch_field_direct ($result, $count);
-			$fieldnames[] = $fieldInfo->name;
-		}
-		
-		# Create an array of the cast votes
-		$castVotes = array ();
-		while ($row = mysqli_fetch_assoc ($result)) {
-			$token = array_shift ($row);	// Skip the token, but store it for use as an index
-			foreach ($row as $k => $v) {
-				$castVotes[$token][$k] = $v;
-			}
-		}
+		$fieldnames = array_keys ($data[0]);
 		
 		# Get the additional votes, if configured
 		$additionalVotes = $this->additionalVotes ($fieldnames, $additionalVotesErrorMessage);
@@ -3210,14 +3207,18 @@ r.generateReport()
 		# Remind people that this is personal data
 		echo "\n<p><strong>Note:</strong> for reasons of data protection, this list of users that have voted is visible only to those on the electoral roll and to the election officials.</p>";
 		
-		if(!($result = mysqli_query ($this->dbLink, "SELECT username FROM `{$this->voterTable}` WHERE voted='1';"))) return($this->error ("Vote list read failed."));
+		# Obtain the data
+		$query = "SELECT username FROM `{$this->voterTable}` WHERE voted = '1';";
+		if (!$rows = $this->databaseConnection->getData ($query)) {
+			return ($this->error ("Vote list read failed."));
+		}
 		
 		#!# <pre> is generated still if no-one voted
 		echo "\n\n<pre>\n";
-		$count=1;
-		while($row = mysqli_fetch_row ($result)){
-			echo $row[0];
-			if($count != $this->totalVoted) {
+		$count = 1;
+		foreach ($rows as $row) {
+			echo htmlspecialchars ($row['username']);
+			if ($count != $this->totalVoted) {
 				echo ',';
 			}
 			if (($count % $perLine) ==0){
