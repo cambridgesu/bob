@@ -90,6 +90,29 @@ class database
 		return $data;
 	}
 	
+	
+	# Function to create a table from a list of fields
+	public function createTable ($name, $fields)
+	{
+		# Construct the list of fields
+		$fieldsSql = array ();
+		foreach ($fields as $fieldname => $specification) {
+			$fieldsSql[] = "{$fieldname} {$specification}";
+		}
+		
+		# Compile the overall SQL; type is deliberately set to InnoDB so that rows are physically stored in the unique key order
+		$query = "CREATE TABLE `{$name}` (" . implode (', ', $fieldsSql) . ") ENGINE=InnoDB CHARACTER SET utf8 COLLATE utf8_unicode_ci;";
+		
+		# Create the table
+		if (!mysqli_query ($this->connection, $query)) {
+			$this->errors[] = "There was a problem setting up the {$name} table.";
+			return false;
+		}
+		
+		# Signal success
+		return true;
+	}
+	
 }
 
 ?>

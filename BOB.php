@@ -1452,10 +1452,10 @@ class BOB
 		
 		# Create whichever/both of the two tables that do not currently exist, or end if there is a failure
 		if (!$voterTablePresent) {
-			if (!$this->createTable ($this->voterTable, $voterTableFields)) {return false;}
+			if (!$this->databaseConnection->createTable ($this->voterTable, $voterTableFields)) {return false;}
 		}
 		if (!$votesTablePresent) {
-			if (!$this->createTable ($this->votesTable, $votesTableFields)) {return false;}
+			if (!$this->databaseConnection->createTable ($this->votesTable, $votesTableFields)) {return false;}
 		}
 		
 		# Validate the fields for each (possibly newly-created) table, or end if there is a failure
@@ -1528,29 +1528,6 @@ class BOB
 		#!# Is this check TOO harsh in terms of capitalisation (e.g. 'DEFAULT' rather than 'default') ?
 		if ($fieldsInDatabase !== $expectedFields) {
 			$this->errors[] = "The fields for the {$name} table do not match; expected was: " . print_r ($expectedFields, true) . " but what was found was: " . print_r ($fieldsInDatabase, true);
-			return false;
-		}
-		
-		# Signal success
-		return true;
-	}
-	
-	
-	# Function to create a table from a list of fields
-	private function createTable ($name, $fields)
-	{
-		# Construct the list of fields
-		$fieldsSql = array ();
-		foreach ($fields as $fieldname => $specification) {
-			$fieldsSql[] = "{$fieldname} {$specification}";
-		}
-		
-		# Compile the overall SQL; type is deliberately set to InnoDB so that rows are physically stored in the unique key order
-		$query = "CREATE TABLE `{$name}` (" . implode (', ', $fieldsSql) . ") ENGINE=InnoDB CHARACTER SET utf8 COLLATE utf8_unicode_ci;";
-		
-		# Create the table
-		if (!mysqli_query ($this->dbLink, $query)) {
-			$this->errors[] = "There was a problem setting up the {$name} table.";
 			return false;
 		}
 		
