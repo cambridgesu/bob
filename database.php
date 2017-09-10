@@ -68,20 +68,38 @@ class database
 	
 	# Generalised function to get data from an SQL query and return it as an array
 	#!# Add failures as an explicit return false; this is not insecure at present though as array() will be retured (equating to boolean false), with the calling code then stopping execution in each case
-	public function getData ($query)
+	public function getData ($query, $preparedStatementValues = array ())
 	{
 		# Create an empty array to hold the data
 		$data = array ();
 		
-		# Execute the query or return false on failure
-		if ($result = mysqli_query ($this->connection, $query)) {
+		# Prepare the statement
+		if ($statement = mysqli_prepare ($this->connection, $query)) {
 			
-			# Check that the table contains data
-			if (mysqli_num_rows ($result) > 0) {
+			# Bind parameters if required
+			#!# Currently only one supported
+			if ($preparedStatementValues) {
+				foreach ($preparedStatementValues as $key => $value) {
+					#!# Currently failure is not reported at this stage but at next stage
+					mysqli_stmt_bind_param ($statement, 's', $value);
+					break;
+				}
+			}
+			
+			# Execute the statement
+			if (mysqli_stmt_execute ($statement)) {
 				
-				# Loop through each row and add the data to it
-				while ($row = mysqli_fetch_assoc ($result)) {
-					$data[] = $row;
+				# Get the results
+				if ($result = mysqli_stmt_get_result ($statement)) {
+					
+					# Check that the table contains data
+					if (mysqli_num_rows ($result) > 0) {
+						
+						# Loop through each row and add the data to it
+						while ($row = mysqli_fetch_assoc ($result)) {
+							$data[] = $row;
+						}
+					}
 				}
 			}
 		}
@@ -92,10 +110,10 @@ class database
 	
 	
 	# Function to get one row
-	public function getOne ($query)
+	public function getOne ($query, $preparedStatementValues = array ())
 	{
 		# Get the data (indexed numerically), or end
-		if (!$data = $this->getData ($query)) {return false;}
+		if (!$data = $this->getData ($query, $preparedStatementValues)) {return false;}
 		
 		# Ensure there is only one row
 		if (count ($data) != 1) {return false;}
