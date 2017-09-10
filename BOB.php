@@ -825,10 +825,10 @@ class BOB
 				return false;
 			}
 			
-			# Obtain the current fields; no error handling needed as we know that the table exists; the escaping is used just in case the admin has specified a stupid table name in the config, though this is not a security issue
+			# Obtain the current fields; no error handling needed as we know that the table exists; the quoting is used just in case the admin has specified a stupid table name in the config, though this is not a security issue
 			# Note there is no problem if this table has additional fields - these will be ignored in the mergeConfiguration() routine and will never get past that into the rest of the system
-			$query = "SELECT * FROM `{$this->config['dbDatabase']}`.`{$this->config['dbConfigTable']}` WHERE id = '" . mysqli_real_escape_string ($this->dbLink, $this->config['id']) . "' LIMIT 1;";
-			if (!$data = $this->databaseConnection->getData ($query)) {
+			$query = "SELECT * FROM `{$this->config['dbDatabase']}`.`{$this->config['dbConfigTable']}` WHERE id = ? LIMIT 1;";
+			if (!$data = $this->databaseConnection->getData ($query, array ('id' => $this->config['id']))) {
 				
 				# If there is no staging database specified, throw an error
 				if (!$this->config['dbDatabaseStaging']) {
@@ -837,8 +837,8 @@ class BOB
 				} else {
 					
 					# Now try to fallback to the staging database, ensuring that it is for a ballot that has not yet opened (which therefore prevents the use of the staging database for live votes)
-					$query = "SELECT * FROM `{$this->config['dbDatabaseStaging']}`.`{$this->config['dbConfigTable']}` WHERE id = '" . mysqli_real_escape_string ($this->dbLink, $this->config['id']) . "' AND NOW() < ballotStart LIMIT 1;";
-					if (!$data = $this->databaseConnection->getData ($query)) {
+					$query = "SELECT * FROM `{$this->config['dbDatabaseStaging']}`.`{$this->config['dbConfigTable']}` WHERE id = ? AND NOW() < ballotStart LIMIT 1;";
+					if (!$data = $this->databaseConnection->getData ($query, array ('id' => $this->config['id']))) {
 						$this->errors[] = "A database-stored configuration in the '<strong>" . htmlspecialchars ("{$this->config['dbDatabaseStaging']}.{$this->config['dbConfigTable']}") . "</strong>' staging table for an election with id '<strong>" . htmlspecialchars ($this->config['id']) . "</strong>' was specified but it could not be retrieved.";
 						return false;
 					}
@@ -1680,8 +1680,8 @@ class BOB
 		if ($username === false) {$username = $this->username;}
 		
 		# Get the user's details; there is no need for any error handling as readability will have been checked in verifyRuntimeDatabasePrivileges()
-		$query = "SELECT username,voted FROM `{$this->voterTable}` WHERE username='" . mysqli_real_escape_string ($this->dbLink, $username) . "';";
-		$row = $this->databaseConnection->getOne ($query);
+		$query = "SELECT username,voted FROM `{$this->voterTable}` WHERE username = ?;";
+		$row = $this->databaseConnection->getOne ($query, array ('username' => $username));
 		
 		# Determine if the user is registered
 		$userIsRegisteredVoter = ($row ? true : false);	// ($row) is a boolean cast in PHP but this ternary form is more explicit
