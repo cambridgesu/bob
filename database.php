@@ -113,6 +113,31 @@ class database
 		return true;
 	}
 	
+	
+	# Function to obtain a list of tables in a database
+	#!# Add failures as an explicit return false; this is not insecure at present though as array() will be retured (equating to boolean false), with the calling code then stopping execution in each case
+	public function getTables ($database)
+	{
+		# Create a list of tables, alphabetically ordered, and put the result into an array
+		$query = "SHOW TABLES FROM `{$database}`;";
+		
+		# Start a list of tables
+		$tables = array ();
+		
+		# Get the tables
+		if (!$tablesList = mysqli_query ($this->connection, $query)) {
+			return $tables;
+		}
+		
+		# Loop through the table resource to get the list of tables
+		while ($tableDetails = mysqli_fetch_row ($tablesList)) {
+			$tables[] = $tableDetails[0];
+		}
+		
+		# Return the list of tables as an array
+		return $tables;
+	}
+	
 }
 
 ?>
