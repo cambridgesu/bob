@@ -91,6 +91,20 @@ class database
 	}
 	
 	
+	# Function to get one row
+	public function getOne ($query)
+	{
+		# Get the data (indexed numerically), or end
+		if (!$data = $this->getData ($query)) {return false;}
+		
+		# Ensure there is only one row
+		if (count ($data) != 1) {return false;}
+		
+		# Return the first row
+		return $data[0];
+	}
+	
+	
 	# Function to create a table from a list of fields
 	public function createTable ($name, $fields)
 	{

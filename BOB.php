@@ -1680,11 +1680,10 @@ class BOB
 		if ($username === false) {$username = $this->username;}
 		
 		# Get the user's details; there is no need for any error handling as readability will have been checked in verifyRuntimeDatabasePrivileges()
-		$query = "SELECT username,voted FROM `{$this->voterTable}` WHERE username='" . mysqli_real_escape_string ($this->dbLink, $username) . "'";
-		$result = mysqli_query ($this->dbLink, $query);
+		$query = "SELECT username,voted FROM `{$this->voterTable}` WHERE username='" . mysqli_real_escape_string ($this->dbLink, $username) . "';";
+		$row = $this->databaseConnection->getOne ($query);
 		
 		# Determine if the user is registered
-		$row = mysqli_fetch_assoc ($result);
 		$userIsRegisteredVoter = ($row ? true : false);	// ($row) is a boolean cast in PHP but this ternary form is more explicit
 		
 		# Determine if the user has voted; clearly this will be false if they are not registered
@@ -2239,8 +2238,12 @@ class BOB
     $tokenChosen = false;
 	while (!$tokenChosen) {
 		$token = $this->generateToken();
-	    if(!($result = mysqli_query ($this->dbLink, "SELECT COUNT(token) AS total FROM `{$this->votesTable}` WHERE token='{$token}'"))) return($this->error ("Token checking failed. The vote submission could not proceed."));
-	    if(!($row = mysqli_fetch_assoc ($result))) return($this->error ("Token checking failed (2). The vote submission could not proceed."));
+		
+		$query = "SELECT COUNT(token) AS total FROM `{$this->votesTable}` WHERE token='{$token}'";
+		if (!$row = $this->databaseConnection->getOne ($query)) {
+			return ($this->error ('Token checking failed. The vote submission could not proceed.'));
+		}
+		
 		if ($row['total'] == '0') {$tokenChosen = true;}	// If there are no matching tokens, then accept this one
 	}
 	
@@ -2326,19 +2329,15 @@ class BOB
 		$html .= "\n<p>We will now attempt to read back your vote from our database, and e-mail it to the returning officer" . ($voterReceipt ? ", blind-carbon-copied (BCC) to your @cam address" : '') . ".</p>";
 		$html .= "\n<p>In the highly unusual case that there is a failure somewhere in the remainder of this voting process, you should keep a record of your proof-of-voting token '<strong>{$token}</strong>' and use it to check your vote really was recorded correctly when the count sheet is posted up after voting has closed.</p>";
 		
-		// Create e-mail body containing ballot information
-		if (!$result = mysqli_query ($this->dbLink, "SELECT * FROM `{$this->votesTable}` WHERE token='$token';")) {
-			$html .= "\n<p><strong>ERROR:</strong> Vote read-back failed (1).</p>";
-			echo $html;
-			return false;
-		}
-		if (!$row = mysqli_fetch_assoc ($result)) {
-			$html .= "\n<p><strong>ERROR:</strong> Vote read-back failed (2).</p>";
+		# Read back the data from the database
+		$query = "SELECT * FROM `{$this->votesTable}` WHERE token='{$token}';";
+		if (!$row = $this->databaseConnection->getOne ($query)) {
+			$html .= "\n<p><strong>ERROR:</strong> Vote read-back failed.</p>";
 			echo $html;
 			return false;
 		}
 		
-		# Compile the message start
+		# Create e-mail body containing ballot information
 		$message  = "Below you will find a record of each of the selections you made on the ballot web-page in order. Each ballot choice is represented in a computer-parsable representation, with an equivalent verbal description to the right of each equals sign.";
 		$message .= "\n\nYour voting token is '{$token}'.";
 		$message .= "\n\nYou should not disclose this e-mail or your voting token to others.\n\n";
