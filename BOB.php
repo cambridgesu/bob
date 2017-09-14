@@ -592,7 +592,7 @@ class BOB
 		$this->loadtime = time ();
 		
 		# Load required libraries
-		require_once ('./database.php');
+		require_once (__DIR__ . '/database.php');
 		
 		# Create an HTML representation of the config structure so it can be echoed to screen below
 		$configHtml  = $this->configHtml ($config, 'coming into the system');
