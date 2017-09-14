@@ -1500,23 +1500,10 @@ class BOB
 			return false;
 		}
 		
-		# Obtain the current fields; error handling not really needed as we know that the table exists
-		$query = "SHOW FULL FIELDS FROM `{$this->config['dbDatabase']}`.`{$name}`;";
-		if (!$data = $this->databaseConnection->getData ($query)) {
-			$this->errors[] = "The field status for the table name {$name} could not be retrieved.";
+		# Obtain database fields for the table
+		if (!$fieldsInDatabase = $this->databaseConnection->getFieldTypes ($this->config['dbDatabase'], $name)) {
+			$this->errors = $this->databaseConnection->getErrors ();
 			return false;
-		}
-		
-		# Create a list of fields, building up a string for each equivalent to the per-field specification in a CREATE TABLE query
-		$fieldsInDatabase = array ();
-		foreach ($data as $index => $field) {
-			$key = $field['Field'];
-			$specification  = strtoupper ($field['Type']);
-			if (strlen ($field['Collation'])) {$specification .= ' collate ' . $field['Collation'];}
-			if (strtoupper ($field['Null']) == 'NO') {$specification .= ' NOT NULL';}
-			if (strtoupper ($field['Key']) == 'PRI') {$specification .= ' PRIMARY KEY';}
-			if (strlen ($field['Default'])) {$specification .= ' DEFAULT ' . $field['Default'];}
-			$fieldsInDatabase[$key] = $specification;
 		}
 		
 		# Compare with strict comparison; the ordering is also considered important to match, as otherwise the key may be in the wrong place

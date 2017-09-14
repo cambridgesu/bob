@@ -180,6 +180,33 @@ class database
 	}
 	
 	
+	# Function to get the field specification for each field in a table, returning a CREATE TABLE -style string
+	public function getFieldTypes ($database, $table)
+	{
+		# Obtain the current fields; error handling not really needed as we know that the table exists
+		$query = "SHOW FULL FIELDS FROM `{$database}`.`{$table}`;";
+		if (!$data = $this->getData ($query)) {
+			$this->errors[] = "The field status for the table name {$table} could not be retrieved.";
+			return false;
+		}
+		
+		# Create a list of fields, building up a string for each equivalent to the per-field specification in a CREATE TABLE query
+		$fields = array ();
+		foreach ($data as $index => $field) {
+			$key = $field['Field'];
+			$specification  = strtoupper ($field['Type']);
+			if (strlen ($field['Collation'])) {$specification .= ' collate ' . $field['Collation'];}
+			if (strtoupper ($field['Null']) == 'NO') {$specification .= ' NOT NULL';}
+			if (strtoupper ($field['Key']) == 'PRI') {$specification .= ' PRIMARY KEY';}
+			if (strlen ($field['Default'])) {$specification .= ' DEFAULT ' . $field['Default'];}
+			$fields[$key] = $specification;
+		}
+		
+		# Return the specification
+		return $fields;
+	}
+	
+	
 	# Function to determine whether the engine type of a table is InnoDB, which supports transactions and automatic ordering
 	public function tableIsInnoDB ($table)
 	{
