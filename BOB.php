@@ -1791,7 +1791,8 @@ class BOB
 	{
 		# Send the contents as plain text; the GUI will have been switched off in the front controller
 		header ('Content-Type: text/plain');
-		$code = file_get_contents (__FILE__);
+		$code  = file_get_contents (__FILE__);
+		$code .= file_get_contents (__DIR__ . '/database.php');
 		echo $code;
 	}
 	
