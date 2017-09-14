@@ -179,6 +179,28 @@ class database
 		return $tables;
 	}
 	
+	
+	# Function to determine whether the engine type of a table is InnoDB, which supports transactions and automatic ordering
+	public function tableIsInnoDB ($table)
+	{
+		# Obtain the table type
+		$query = "SHOW TABLE STATUS LIKE '{$table}';";	// LIKE does do an exact match here; using only a substring fails to return any results
+		if (!$data = $this->getOne ($query)) {
+			$this->errors[] = "The table status for the table name {$table} could not be retrieved.";
+			return false;
+		}
+		
+		# Check the type
+		$engine = $data['Engine'];
+		if ($engine != 'InnoDB') {
+			$this->errors[] = "The table {$table} is not using the InnoDB storage engine.";
+			return false;
+		}
+		
+		# Return success
+		return true;
+	}
+	
 }
 
 ?>

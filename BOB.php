@@ -1495,15 +1495,8 @@ class BOB
 	private function validateTableFields ($name, $expectedFields)
 	{
 		# Check that the table type is InnoDB; the features used in BOB are the use of transactions and automatic key ordering
-		$query = "SHOW TABLE STATUS LIKE '{$name}';";	// LIKE does do an exact match here; using only a substring fails to return any results
-		if (!$data = $this->databaseConnection->getData ($query)) {
-			$this->errors[] = "The table status for the table name {$name} could not be retrieved.";
-			return false;
-		}
-		
-		$engine = $data[0]['Engine'];
-		if ($engine != 'InnoDB') {
-			$this->errors[] = "The table {$name} is not using the InnoDB storage engine.";
+		if (!$this->databaseConnection->tableIsInnoDB ($name)) {
+			$this->errors = $this->databaseConnection->getErrors ();
 			return false;
 		}
 		
