@@ -117,6 +117,22 @@ class database
 	}
 	
 	
+	# Function to execute a query, intended for query types that return a row count (e.g. insert/update)
+	public function query ($query)
+	{
+		# Run the query, or end on failure
+		if (!$result = mysqli_query ($this->connection, $query)) {
+			return false;
+		}
+		
+		# Obtain the number of affected rows, as an integer
+		$rows = mysqli_affected_rows ($this->connection);
+		
+		# Return the number of rows (which may be zero)
+		return $rows;
+	}
+	
+	
 	# Function to get one row
 	public function getOne ($query, $preparedStatementValues = array ())
 	{

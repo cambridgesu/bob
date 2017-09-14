@@ -2300,15 +2300,17 @@ class BOB
 		$coln = "token" . $coln;
 		$colv = "'{$token}'" . $colv;
 		
-		// Record data from the ballot HTML form along with random token.
-		if (!$this->databaseConnection->execute ("INSERT INTO `{$this->votesTable}` ({$coln}) VALUES ({$colv});") or mysqli_affected_rows ($this->dbLink) != 1) {
+		// Record data from the ballot HTML form along with random token
+		$rows = $this->databaseConnection->query ("INSERT INTO `{$this->votesTable}` ({$coln}) VALUES ({$colv});");
+		if ($rows != 1) {	// Failure would be false or some incorrect number of rows
 			echo "\n<p>Recording your vote ...</p>";
 			$this->doRollback ();
 			return $this->error ('Database vote insert failure.');
 		}
 		
 		// Modify the voter table to indicate this vote has been cast
-		if (!$this->databaseConnection->execute ("UPDATE `{$this->voterTable}` SET voted = '1' WHERE username='{$this->username}' AND voted = '0';") or mysqli_affected_rows ($this->dbLink) != 1) {
+		$rows = $this->databaseConnection->query ("UPDATE `{$this->voterTable}` SET voted = '1' WHERE username='{$this->username}' AND voted = '0';");
+		if ($rows != 1) {	// Failure would be false or some incorrect number of rows
 			echo "\n<p>Recording your vote ...</p>";
 			$this->doRollback ();
 			return $this->error ('Recording voter as having voted failed. As such, the vote itself has not been stored either.');
