@@ -1452,6 +1452,7 @@ class BOB
 		$votesTablePresent = ($tables && in_array ($this->votesTable, $tables));
 		
 		# Create whichever/both of the two tables that do not currently exist, or end if there is a failure
+		#!# Error correctly stops execution but error message is not currently shown
 		if (!$voterTablePresent) {
 			if (!$this->databaseConnection->createTable ($this->voterTable, $voterTableFields)) {return false;}
 		}

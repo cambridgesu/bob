@@ -153,7 +153,7 @@ class database
 		$query = "CREATE TABLE `{$name}` (" . implode (', ', $fieldsSql) . ") ENGINE=InnoDB CHARACTER SET utf8 COLLATE utf8_unicode_ci;";
 		
 		# Create the table
-		if (!mysqli_query ($this->connection, $query)) {
+		if (!$this->execute ($query)) {
 			$this->errors[] = "There was a problem setting up the {$name} table.";
 			return false;
 		}
@@ -174,16 +174,16 @@ class database
 		$tables = array ();
 		
 		# Get the tables
-		if (!$tablesList = mysqli_query ($this->connection, $query)) {
+		if (!$tablesList = $this->getData ($query)) {
 			return $tables;
 		}
 		
-		# Loop through the table resource to get the list of tables
-		while ($tableDetails = mysqli_fetch_row ($tablesList)) {
-			$tables[] = $tableDetails[0];
+		# Rearrange
+		foreach ($tablesList as $index => $attributes) {
+			$tables[] = $attributes["Tables_in_{$database}"];
 		}
 		
-		# Return the list of tables as an array
+		# Return the list of tables
 		return $tables;
 	}
 	
