@@ -41,13 +41,6 @@ class database
 	}
 	
 	
-	# Getter to obtain the raw connection
-	public function getConnection ()
-	{
-		return $this->connection;
-	}
-	
-	
 	# Getter to return errors
 	public function getErrors ()
 	{
@@ -55,7 +48,7 @@ class database
 	}
 	
 	
-	# Function to close the database explicitly
+	# Function to close the database connection explicitly
 	public function close ()
 	{
 		# Explicitly close the database connection so that it cannot be reused

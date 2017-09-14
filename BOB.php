@@ -542,7 +542,6 @@ class BOB
 	
 	# State variables
 	private $databaseConnection = NULL;		// Database object
-	private $dbLink = NULL;					// Raw database handle
 	private $errors = array ();				// Array of setup errors
 	private $config = array ();				// Global config (i.e. $this->config; not $config which comes into the constructor, which is local)
 	private $username = NULL;				// Username of voter
@@ -1376,16 +1375,16 @@ class BOB
 	private function openDatabaseConnection ($dbUsername)
 	{
 		# Create the database connection, or end
-		$this->databaseConnection = new database ($this->config['dbHostname'], $dbUsername, $this->config['dbPassword'], $this->config['dbDatabase']);
-		if (!$this->databaseConnection->isConnected ()) {
-			$this->errors = $this->databaseConnection->getErrors ();
-			return false;
+		$connection = new database ($this->config['dbHostname'], $dbUsername, $this->config['dbPassword'], $this->config['dbDatabase']);
+		if (!$connection->isConnected ()) {
+			$this->errors = $connection->getErrors ();
+			return NULL;
 		}
 		
-		# Get the database connection handle
-		$this->dbLink = $this->databaseConnection->getConnection ();
+		# Register the successful connection
+		$this->databaseConnection = $connection;
 		
-		# Success
+		# Return success
 		return true;
 	}
 	
@@ -1394,8 +1393,10 @@ class BOB
 	private function closeDatabaseConnection ()
 	{
 		# Delegate
-		$this->databaseConnection->close ();
-		$this->dbLink = $this->databaseConnection->getConnection ();	// i.e. NULL
+		if ($this->databaseConnection) {
+			$this->databaseConnection->close ();
+			$this->databaseConnection = NULL;
+		}
 	}
 	
 	
@@ -1403,7 +1404,7 @@ class BOB
 	private function setupTables ()
 	{
 		# Connect to the database at the setup user privilege level; do not reconnect if the db has already been established, i.e. if the dbSetupUsername config setting has been used, as that will have triggered a connection to retrieve the config
-		if (!$this->dbLink) {
+		if (!$this->databaseConnection) {
 			if (!$this->openDatabaseConnection ($this->config['dbSetupUsername'])) {
 				$this->errors[] = "... therefore the database connection for the setup check could not be established.";
 				return false;
