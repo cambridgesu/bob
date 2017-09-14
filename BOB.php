@@ -2287,7 +2287,7 @@ class BOB
 		}
 		
 		// Start transaction
-		if (!$this->databaseConnection->execute ('BEGIN WORK;')) {
+		if (!$this->databaseConnection->query ('BEGIN WORK;')) {
 			echo "\n<p>Recording your vote ...</p>";
 			return $this->error ('Failed to start database transaction.');
 		}
@@ -2303,7 +2303,7 @@ class BOB
 		$colv = "'{$token}'" . $colv;
 		
 		// Record data from the ballot HTML form along with random token
-		$rows = $this->databaseConnection->query ("INSERT INTO `{$this->votesTable}` ({$coln}) VALUES ({$colv});");
+		$rows = $this->databaseConnection->execute ("INSERT INTO `{$this->votesTable}` ({$coln}) VALUES ({$colv});");
 		if ($rows != 1) {	// Failure would be false or some incorrect number of rows
 			echo "\n<p>Recording your vote ...</p>";
 			$this->doRollback ();
@@ -2311,7 +2311,7 @@ class BOB
 		}
 		
 		// Modify the voter table to indicate this vote has been cast
-		$rows = $this->databaseConnection->query ("UPDATE `{$this->voterTable}` SET voted = '1' WHERE username='{$this->username}' AND voted = '0';");
+		$rows = $this->databaseConnection->execute ("UPDATE `{$this->voterTable}` SET voted = '1' WHERE username='{$this->username}' AND voted = '0';");
 		if ($rows != 1) {	// Failure would be false or some incorrect number of rows
 			echo "\n<p>Recording your vote ...</p>";
 			$this->doRollback ();
@@ -2319,7 +2319,7 @@ class BOB
 		}
 		
 		# Commit the transaction
-		if (!$this->databaseConnection->execute ('COMMIT;')) {
+		if (!$this->databaseConnection->query ('COMMIT;')) {
 			echo "\n<p>Recording your vote ...</p>";
 			$this->doRollback ();
 			return $this->error ('Transaction failed to commit.');
@@ -2440,7 +2440,7 @@ class BOB
 	# Function to do a database rollback
 	private function doRollback ()
 	{
-		if (!$this->databaseConnection->execute ('ROLLBACK;')) {
+		if (!$this->databaseConnection->query ('ROLLBACK;')) {
 			$this->error ('Unable to roll back the database transaction.');
 		}
 		

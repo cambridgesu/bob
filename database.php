@@ -103,7 +103,7 @@ class database
 	
 	
 	# Function to execute a query, intended for query types that do not return a result set
-	public function execute ($query)
+	public function query ($query)
 	{
 		# Run the query and return its status
 		return $result = mysqli_query ($this->connection, $query);
@@ -111,7 +111,7 @@ class database
 	
 	
 	# Function to execute a query, intended for query types that return a row count (e.g. insert/update)
-	public function query ($query)
+	public function execute ($query)
 	{
 		# Run the query, or end on failure
 		if (!$result = mysqli_query ($this->connection, $query)) {
@@ -153,7 +153,7 @@ class database
 		$query = "CREATE TABLE `{$name}` (" . implode (', ', $fieldsSql) . ") ENGINE=InnoDB CHARACTER SET utf8 COLLATE utf8_unicode_ci;";
 		
 		# Create the table
-		if (!$this->execute ($query)) {
+		if (!$this->query ($query)) {
 			$this->errors[] = "There was a problem setting up the {$name} table.";
 			return false;
 		}
