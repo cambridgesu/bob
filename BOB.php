@@ -2221,8 +2221,8 @@ class BOB
 	while (!$tokenChosen) {
 		$token = $this->generateToken();
 		
-		$query = "SELECT COUNT(token) AS total FROM `{$this->votesTable}` WHERE token='{$token}'";
-		if (!$row = $this->databaseConnection->getOne ($query)) {
+		$query = "SELECT COUNT(token) AS total FROM `{$this->votesTable}` WHERE token = :token";
+		if (!$row = $this->databaseConnection->getOne ($query, array ('token' => $token))) {
 			return ($this->error ('Token checking failed. The vote submission could not proceed.'));
 		}
 		
