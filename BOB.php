@@ -2250,8 +2250,7 @@ class BOB
 		$voterReceipt = $this->voterReceipt ($this->config['voterReceiptDisableable']);
 		
 		// Create a string of column names and corresponding column values by looping through the configuration array and looking up the (now-validated) value in the POST array
-		$coln  = '';
-		$colv  = '';
+		$insert = array ();
 		foreach ($this->config['electionInfo'] as $voteSet => $candidates) {
 			$voteSet = $voteSet + 1;	// Adjust the array indexing - the generated <select> boxes start at [1] not [0]
 			
@@ -2261,8 +2260,9 @@ class BOB
 				// Skip the first 'candidate' as that is actually a heading
 				if ($preferenceNumber == 0) {continue;}
 				
-				$coln .= ",v{$voteSet}p{$preferenceNumber}";
-				$colv .= ',' . $_POST['v'][$voteSet][$preferenceNumber];
+				$field = "v{$voteSet}p{$preferenceNumber}";
+				$value = $_POST['v'][$voteSet][$preferenceNumber];
+				$insert[$field] = $value;
 			}
 		}
 		
@@ -2278,12 +2278,12 @@ class BOB
 			return $this->error ('Token could not be generated. Please resubmit.');	// Safe to end after a BEGIN WORK: MySQL documentation says "If a client connection drops, the server releases table locks held by the client."
 		}
 		
-		// Add the token field and value to the SQL extracts being built
-		$coln = "token" . $coln;
-		$colv = "'{$token}'" . $colv;
+		// Add the token field and value to the start
+		$insert = array ('token' => "'{$token}'") + $insert;
 		
 		// Record data from the ballot HTML form along with random token
-		$rows = $this->databaseConnection->execute ("INSERT INTO `{$this->votesTable}` ({$coln}) VALUES ({$colv});");
+		$query = "INSERT INTO `{$this->votesTable}` (" . implode (',', array_keys ($insert)) . ') VALUES (' . implode (',', $insert) . ');';
+		$rows = $this->databaseConnection->execute ($query);
 		if ($rows != 1) {	// Failure would be false or some incorrect number of rows
 			echo "\n<p>Recording your vote ...</p>";
 			$this->doRollback ();
