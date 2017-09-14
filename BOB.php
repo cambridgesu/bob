@@ -2314,8 +2314,8 @@ class BOB
 		$html .= "\n<p>In the highly unusual case that there is a failure somewhere in the remainder of this voting process, you should keep a record of your proof-of-voting token '<strong>{$token}</strong>' and use it to check your vote really was recorded correctly when the count sheet is posted up after voting has closed.</p>";
 		
 		# Read back the data from the database
-		$query = "SELECT * FROM `{$this->votesTable}` WHERE token='{$token}';";
-		if (!$row = $this->databaseConnection->getOne ($query)) {
+		$query = "SELECT * FROM `{$this->votesTable}` WHERE token = :token;";
+		if (!$row = $this->databaseConnection->getOne ($query, array ('token' => $token))) {
 			$html .= "\n<p><strong>ERROR:</strong> Vote read-back failed.</p>";
 			echo $html;
 			return false;
