@@ -12,22 +12,28 @@ class database
 	# Function to connect to the database
 	public function __construct ($hostname, $username, $password, $database)
 	{
+		# Construct the DSN
+		$dsn = "mysql:host={$hostname};dbname={$database}";
+		
+		# Enable exception throwing; see: https://php.net/pdo.error-handling
+		$driverOptions[PDO::ATTR_ERRMODE] = PDO::ERRMODE_EXCEPTION;
+		
+		# Use real prepared statements, which also supports native types (integers/floats are returned as such rather than as strings)
+		$driverOptions[PDO::ATTR_EMULATE_PREPARES] = false;
+		
 		# Connect to the database as the specified user, or end
-		if (!$this->connection = @mysqli_connect ($hostname, $username, $password)) {
-			$this->errors[] = "Error opening database connection with the database username '<strong>" . htmlspecialchars ($username) . "</strong>'. The database server said: '<em>" . htmlspecialchars (mysqli_connect_error ()) . "</em>'";
-			return;		// End
+		try {
+			$this->connection = new PDO ($dsn, $username, $password, $driverOptions);
+		} catch (PDOException $e) {		// "PDO::__construct() will always throw a PDOException if the connection fails regardless of which PDO::ATTR_ERRMODE is currently set." noted at http://php.net/pdo.error-handling
+			$this->connection = NULL;
+			$this->errors[] = "Error opening database connection for database '<strong>" . htmlspecialchars ($database) . "</strong>' with the username '<strong>" . htmlspecialchars ($username) . "</strong>'. The database server said: '<em>" . htmlspecialchars ($e->getMessage ()) . "</em>'";
+			return;
 		}
 		
 		# Ensure we are talking in Unicode, or end
-		if (!mysqli_query ($this->connection, "SET NAMES 'utf8';")) {
-			$this->errors[] = "Error setting the database connection to UTF-8";
-			return;		// End
-		}
-		
-		# Select the database, or end
-		if (!@mysqli_select_db ($this->connection, $database)) {
-			$this->errors[] = "Error selecting the database '<strong>" . htmlspecialchars ($database) . "</strong>'. Check it exists and that the user {$username} has rights to it. The database server said: '<em>" . htmlspecialchars (mysqli_error ($this->connection)) . "</em>'";
+		if (!$result = $this->query ("SET NAMES 'utf8';")) {
 			$this->connection = NULL;
+			$this->errors[] = 'Error setting the database connection to UTF-8';
 			return;		// End
 		}
 		
@@ -53,8 +59,7 @@ class database
 	{
 		# Explicitly close the database connection so that it cannot be reused
 		if ($this->connection) {
-			mysqli_close ($this->connection);
-			$this->connection = NULL;
+			$this->connection = NULL;	// This is sufficient to prevent further use of this class; full closure also requires closing references such as from a PDOStatement instance
 		}
 	}
 	
@@ -66,36 +71,17 @@ class database
 		# Create an empty array to hold the data
 		$data = array ();
 		
-		# Prepare the statement
-		if ($statement = mysqli_prepare ($this->connection, $query)) {
-			
-			# Bind parameters if required
-			#!# Currently only one supported
-			if ($preparedStatementValues) {
-				foreach ($preparedStatementValues as $key => $value) {
-					#!# Currently failure is not reported at this stage but at next stage
-					mysqli_stmt_bind_param ($statement, 's', $value);
-					break;
-				}
-			}
-			
-			# Execute the statement
-			if (mysqli_stmt_execute ($statement)) {
-				
-				# Get the results
-				if ($result = mysqli_stmt_get_result ($statement)) {
-					
-					# Check that the table contains data
-					if (mysqli_num_rows ($result) > 0) {
-						
-						# Loop through each row and add the data to it
-						while ($row = mysqli_fetch_assoc ($result)) {
-							$data[] = $row;
-						}
-					}
-				}
-			}
+		# Execute the statement (ending if there is an error in the query or parameters)
+		try {
+			$this->preparedStatement = $this->connection->prepare ($query);
+			$this->preparedStatement->execute ($preparedStatementValues);
+		} catch (PDOException $e) {
+			return $data;
 		}
+		
+		# Fetch the data
+		$this->preparedStatement->setFetchMode (PDO::FETCH_ASSOC);
+		$data = $this->preparedStatement->fetchAll ();
 		
 		# Return the array
 		return $data;
@@ -105,21 +91,27 @@ class database
 	# Function to execute a query, intended for query types that do not return a result set
 	public function query ($query)
 	{
-		# Run the query and return its status
-		return $result = mysqli_query ($this->connection, $query);
+		# Run the query
+		try {
+			$this->connection->exec ($query);
+		} catch (PDOException $e) {
+			return false;
+		}
+		
+		# Return success
+		return true;
 	}
 	
 	
 	# Function to execute a query, intended for query types that return a row count (e.g. insert/update)
 	public function execute ($query)
 	{
-		# Run the query, or end on failure
-		if (!$result = mysqli_query ($this->connection, $query)) {
+		# Run the query and obtain the number of rows (which may be zero), or false on failure
+		try {
+			$rows = $this->connection->exec ($query);
+		} catch (PDOException $e) {
 			return false;
 		}
-		
-		# Obtain the number of affected rows, as an integer
-		$rows = mysqli_affected_rows ($this->connection);
 		
 		# Return the number of rows (which may be zero)
 		return $rows;
