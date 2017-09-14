@@ -109,6 +109,14 @@ class database
 	}
 	
 	
+	# Function to execute a query, intended for query types that do not return a result set
+	public function execute ($query)
+	{
+		# Run the query and return its status
+		return $result = mysqli_query ($this->connection, $query);
+	}
+	
+	
 	# Function to get one row
 	public function getOne ($query, $preparedStatementValues = array ())
 	{

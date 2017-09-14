@@ -2284,8 +2284,8 @@ class BOB
 			}
 		}
 		
-		// Start transaction.
-		if (!mysqli_query ($this->dbLink, 'BEGIN WORK;')) {
+		// Start transaction
+		if (!$this->databaseConnection->execute ('BEGIN WORK;')) {
 			echo "\n<p>Recording your vote ...</p>";
 			return $this->error ('Failed to start database transaction.');
 		}
@@ -2301,21 +2301,21 @@ class BOB
 		$colv = "'{$token}'" . $colv;
 		
 		// Record data from the ballot HTML form along with random token.
-		if (!mysqli_query ($this->dbLink, "INSERT INTO `{$this->votesTable}` ({$coln}) VALUES ({$colv});") or mysqli_affected_rows ($this->dbLink) != 1) {
+		if (!$this->databaseConnection->execute ("INSERT INTO `{$this->votesTable}` ({$coln}) VALUES ({$colv});") or mysqli_affected_rows ($this->dbLink) != 1) {
 			echo "\n<p>Recording your vote ...</p>";
 			$this->doRollback ();
 			return $this->error ('Database vote insert failure.');
 		}
 		
 		// Modify the voter table to indicate this vote has been cast
-		if (!mysqli_query ($this->dbLink, "UPDATE `{$this->voterTable}` SET voted = '1' WHERE username='{$this->username}' AND voted = '0';") or mysqli_affected_rows ($this->dbLink) != 1) {
+		if (!$this->databaseConnection->execute ("UPDATE `{$this->voterTable}` SET voted = '1' WHERE username='{$this->username}' AND voted = '0';") or mysqli_affected_rows ($this->dbLink) != 1) {
 			echo "\n<p>Recording your vote ...</p>";
 			$this->doRollback ();
 			return $this->error ('Recording voter as having voted failed. As such, the vote itself has not been stored either.');
 		}
 		
 		# Commit the transaction
-		if (!mysqli_query ($this->dbLink, 'COMMIT;')) {
+		if (!$this->databaseConnection->execute ('COMMIT;')) {
 			echo "\n<p>Recording your vote ...</p>";
 			$this->doRollback ();
 			return $this->error ('Transaction failed to commit.');
@@ -2436,7 +2436,7 @@ class BOB
 	# Function to do a database rollback
 	private function doRollback ()
 	{
-		if (!mysqli_query ($this->dbLink, 'ROLLBACK;')) {
+		if (!$this->databaseConnection->execute ('ROLLBACK;')) {
 			$this->error ('Unable to roll back the database transaction.');
 		}
 		
