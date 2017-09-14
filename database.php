@@ -180,6 +180,28 @@ class database
 	}
 	
 	
+	# Function to get the privilege specification for each field in a table
+	public function getFieldPrivileges ($database, $table)
+	{
+		# Obtain the current fields; error handling not really needed as we know that the table exists; note that we cannot reuse the same call in validateTableFields as that was running under the setup user
+		$query = "SHOW FULL FIELDS FROM `{$database}`.`{$table}`;";
+		if (!$fields = $this->getData ($query)) {
+			$this->errors[] = "The full fields status for the table name {$table} could not be retrieved.";
+			return false;
+		}
+		
+		# Loop through each field and ensure that the privileges are correct
+		$privileges = array ();
+		foreach ($fields as $index => $field) {
+			$fieldname = $field['Field'];
+			$privileges[$fieldname] = strtolower ($field['Privileges']);
+		}
+		
+		# Return the privileges
+		return $privileges;
+	}
+	
+	
 	# Function to get the field specification for each field in a table, returning a CREATE TABLE -style string
 	public function getFieldTypes ($database, $table)
 	{

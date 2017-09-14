@@ -1528,18 +1528,17 @@ class BOB
 		$tables = array ($this->voterTable, $this->votesTable);
 		foreach ($tables as $table) {
 			
-			# Obtain the current fields; error handling not really needed as we know that the table exists; note that we cannot reuse the same call in validateTableFields as that was running under the setup user
-			$query = "SHOW FULL FIELDS FROM `{$this->config['dbDatabase']}`.`{$table}`;";
-			if (!$fields = $this->databaseConnection->getData ($query)) {
-				$this->errors[] = "The full fields status for the table name {$table} could not be retrieved.";
+			# Get the privileges
+			if (!$privileges = $this->databaseConnection->getFieldPrivileges ($this->config['dbDatabase'], $table)) {
+				$this->errors = $this->databaseConnection->getErrors ();
 				return false;
 			}
 			
 			# Loop through each field and ensure that the privileges are correct
 			$wrongFields = array ();
-			foreach ($fields as $index => $field) {
-				if (strtolower ($field['Privileges']) != $correctPrivileges) {
-					$wrongFields[] = $field['Field'];
+			foreach ($privileges as $field => $fieldPrivileges) {
+				if ($fieldPrivileges != $correctPrivileges) {
+					$wrongFields[] = $field;
 				}
 			}
 			
