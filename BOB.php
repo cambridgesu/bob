@@ -1559,11 +1559,11 @@ class BOB
 	{
 		# Get the total; there is not really any need for error handling as readability will have been checked in verifyRuntimeDatabasePrivileges()
 		$query = "SELECT COUNT(*) AS total FROM `{$this->voterTable}`;";
-		if (!$data = $this->databaseConnection->getData ($query)) {
+		if (!$data = $this->databaseConnection->getOne ($query)) {
 			$this->errors[] = "The count for the voter table could not be retrieved.";
 			return false;
 		}
-		$total = $data[0]['total'];
+		$total = $data['total'];
 		
 		# If there are any, return the total (which will evaluate to true)
 		if ($total) {return $total;}
