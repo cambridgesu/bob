@@ -15,7 +15,7 @@
  *
  * Token word list Copyright The Internet Society (1998).
  *
- * Version 1.9.0-beta
+ * Version 1.9.0
  *
  * Copyright (C) authors as above
  * 

@@ -26,7 +26,8 @@ class database
 			$this->connection = new PDO ($dsn, $username, $password, $driverOptions);
 		} catch (PDOException $e) {		// "PDO::__construct() will always throw a PDOException if the connection fails regardless of which PDO::ATTR_ERRMODE is currently set." noted at http://php.net/pdo.error-handling
 			$this->connection = NULL;
-			$this->errors[] = "Error opening database connection for database '<strong>" . htmlspecialchars ($database) . "</strong>' with the username '<strong>" . htmlspecialchars ($username) . "</strong>'. The database server said: '<em>" . htmlspecialchars ($e->getMessage ()) . "</em>'";
+			// DEBUG: $this->errors[] = "Error opening database connection for database '<strong>" . htmlspecialchars ($database) . "</strong>' with the username '<strong>" . htmlspecialchars ($username) . "</strong>'. The database server said: '<em>" . htmlspecialchars ($e->getMessage ()) . "</em>'";
+			$this->errors[] = 'Error opening database connection.';
 			return;
 		}
 		
