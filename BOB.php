@@ -77,6 +77,7 @@ $config['officialsUsernames'] = 'abc12 xyz98';	// Space-separated
 $config['ballotStart'] = '2009-02-13 00:00:00';
 $config['ballotEnd'] = '2009-02-18 00:01:00';
 $config['paperVotingEnd'] = false;
+$config['ballotViewableDelayed'] = false;
 
 # Textual information about any randomisation which may have been made
 $config['randomisationInfo'] = false;	// Will have htmlspecialchars applied to it
@@ -178,7 +179,7 @@ $config['countingMethod'] = 'ERS97STV';
 
 
 # The database table should contain these fields, in addition to id as above:
-# title,urlMoreInfo,emailReturningOfficer,emailTech,officialsUsernames,ballotStart,ballotEnd,paperVotingEnd,randomisationInfo,referendumThresholdPercent,frontPageMessageHtml,afterVoteMessageHtml,voterReceiptDisableable,disableListWhoVoted,adminDuringElectionOK,organisationName,organisationUrl,organisationLogoUrl,headerLocation,footerLocation,additionalVotesCsvDirectory,electionInfo
+# title,urlMoreInfo,emailReturningOfficer,emailTech,officialsUsernames,ballotStart,ballotEnd,paperVotingEnd,ballotViewableDelayed,randomisationInfo,referendumThresholdPercent,frontPageMessageHtml,afterVoteMessageHtml,voterReceiptDisableable,disableListWhoVoted,adminDuringElectionOK,organisationName,organisationUrl,organisationLogoUrl,headerLocation,footerLocation,additionalVotesCsvDirectory,electionInfo
 # However, urlMoreInfo,referendumThresholdPercent,referendumThresholdIsYesVoters,frontPageMessageHtml,afterVoteMessageHtml,voterReceiptDisableable,disableListWhoVoted,adminDuringElectionOK,headerLocation,footerLocation,additionalVotesCsvDirectory are optional fields which need not be created
 
 
@@ -220,6 +221,7 @@ CREATE TABLE IF NOT EXISTS `instances` (
    `ballotStart` datetime NOT NULL COMMENT 'Start date/time of the ballot',
    `ballotEnd` datetime NOT NULL COMMENT 'End date/time of the ballot',
    `paperVotingEnd` datetime DEFAULT NULL COMMENT 'End time of paper voting, if paper voting is also taking place',
+   `ballotViewableDelayed` datetime NOT NULL COMMENT 'End date/time for delayed viewing of results by voters',
 -- `instanceCompleteTimestamp` datetime DEFAULT NULL COMMENT 'Timestamp for when the instance (configuration and voters list) is complete',
    PRIMARY KEY  (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
@@ -467,6 +469,7 @@ class BOB
 		'ballotStart'					=> NULL,
 		'ballotEnd'						=> NULL,
 		'paperVotingEnd'				=> false,
+		'ballotViewableDelayed'				=> false,
 		'frontPageMessageHtml'			=> false,
 		'afterVoteMessageHtml'			=> false,
 		'voterReceiptDisableable'			=> false,
@@ -690,6 +693,7 @@ class BOB
 		$this->duringElection = $this->duringElection ();
 		$this->afterElection = $this->afterElection ();
 		$this->afterBallotView = $this->afterBallotView ();
+		$this->afterBallotViewDelayed = $this->afterBallotViewDelayed ();
 		
 		# Ensure there are no votes before the start of the election
 		if ($this->beforeElection && $this->totalVoted) {
@@ -935,14 +939,14 @@ class BOB
 		}
 		
 		# Convert the times to unixtime
-		$timeSettings = array ('ballotStart', 'ballotEnd', 'paperVotingEnd');
+		$timeSettings = array ('ballotStart', 'ballotEnd', 'paperVotingEnd', 'ballotViewableDelayed');
 		foreach ($timeSettings as $timeSetting) {
 			
 			# The paperVotingEnd setting, is not required; only perform the check and conversion to UNIX time below if not false/empty
-			if ($timeSetting == 'paperVotingEnd') {
-				if ($this->config['paperVotingEnd'] == '0000-00-00 00:00:00') {$this->config['paperVotingEnd'] = false;}	// Deal with 32/64 bit compatibility; see: http://stackoverflow.com/questions/141315
-				if (!$this->config['paperVotingEnd']) {
-					$this->config['paperVotingEnd'] = false;	// Explicitly cast false/NULL/0/''/'0'/etc. (see http://php.net/types.comparisons ) as false, to avoid persistence as some other equivalent of false
+			if (($timeSetting == 'paperVotingEnd') || ($timeSetting == 'ballotViewableDelayed')) {
+				if ($this->config[$timeSetting] == '0000-00-00 00:00:00') {$this->config[$timeSetting] = false;}	// Deal with 32/64 bit compatibility; see: http://stackoverflow.com/questions/141315
+				if (!$this->config[$timeSetting]) {
+					$this->config[$timeSetting] = false;	// Explicitly cast false/NULL/0/''/'0'/etc. (see http://php.net/types.comparisons ) as false, to avoid persistence as some other equivalent of false
 					continue;
 				}
 			}
@@ -976,11 +980,21 @@ class BOB
 		#!# Rename this variable to ballotsViewable for clarity perhaps
 		$this->ballotViewable = max ($this->config['ballotEnd'], $this->config['paperVotingEnd']);
 		
+		# Set the ballotViewableDelayed to be the same as ballotViewable if not specified
+		$this->ballotViewableDelayed = ($this->config['ballotViewableDelayed'] ? $this->config['ballotViewableDelayed'] : $this->ballotViewable);
+		
+		# Validate that any delayed ballot viewable time is not before the ballot viewable time
+		if ($this->ballotViewableDelayed < $this->ballotViewable) {
+			$this->errors[] = "The time settings for this ballot in the configuration are wrong; the delayed ballot viewable time must be the same or after the ballot viewable time.";
+			return false;
+		}
+		
 		# Create formatted versions of each of the times
 		$this->ballotStartFormatted = date ('H:ia, l, jS F Y', $this->config['ballotStart']);
 		$this->ballotEndFormatted = date ('H:ia, l, jS F Y', $this->config['ballotEnd']);
 		$this->paperVotingEndFormatted = date ('H:ia, l, jS F Y', $this->config['paperVotingEnd']);
 		$this->ballotViewableFormatted = date ('H:ia, l, jS F Y', $this->ballotViewable);
+		$this->ballotViewableDelayedFormatted = date ('H:ia, l, jS F Y', $this->ballotViewableDelayed);
 		
 		# Create an MD5 hash of BOB itself and a serialised version of the config
 		$this->bobMd5 = md5_file (__FILE__);
@@ -1647,6 +1661,13 @@ class BOB
 	}
 	
 	
+	# Function to determine whether have reached the point when the ballot is viewable by all voters
+	private function afterBallotViewDelayed ()
+	{
+		return ($this->ballotViewableDelayed < $this->loadtime);
+	}
+	
+	
 	# Function to determine whether we this is a split election (online and paper)
 	private function splitElection ()
 	{
@@ -1726,12 +1747,18 @@ class BOB
 		if ($this->afterElection) {
 			$html .= "\n\t\t" . '<li><strong>Current status:</strong> The ballot has now closed.</li>';
 		}
-		if ($this->afterBallotView) {
+		if ($this->afterBallotView && !$this->afterBallotViewDelayed) {
+			$html .= "\n\t\t" . '<li>Results and vote data will be visible' . ($this->userIsElectionOfficial ? ' <strong>to ordinary voters</strong>' : '') . ' from ' . $this->ballotViewableDelayedFormatted . '.</li>';
+			if ($this->userIsElectionOfficial) {
+				$html .= "\n\t\t" . '<p>As an election official, you are able to view the results and votes data already (but can in no way amend these):</p>';
+			}
+		}
+		if ($this->afterBallotViewDelayed || ($this->userIsElectionOfficial && $this->afterBallotView)) {
 			$html .= "\n\t\t" . "<li class=\"showvotes\"><a href=\"./?results\">View results of election</a></li>";
 			$html .= "\n\t\t" . "<li class=\"spaced showvotes\"><a href=\"./?showvotes\">View list of votes cast" . ($this->splitElection ? ' electronically' : '') . ' (total ' . number_format ($this->totalVoted) . ')</a></li>';
 		}
-		if ($this->duringElection || ($this->splitElection && $this->afterElection && !$this->afterBallotView)) {
-			$html .= "\n\t\t" . '<li>You will be able to view the list of votes cast (which are used to calculate the results) here at<br />' . $this->ballotViewableFormatted . '.</li>';
+		if ($this->duringElection || ($this->splitElection && $this->afterElection && !$this->afterBallotViewDelayed)) {
+			$html .= "\n\t\t" . '<li>You will be able to view the list of votes cast (which are used to calculate the results) here at<br />' . $this->ballotViewableDelayedFormatted . '.</li>';
 		}
 		$html .= "\n\t</ul>";
 		$html .= "\n</div>";
@@ -1761,7 +1788,12 @@ class BOB
 		if ($this->splitElection) {
 			$html .= "\n\t<tr>\n\t\t<td>Paper voting closing time:</td>\n\t\t<td>" . $this->paperVotingEndFormatted . "</td>\n\t</tr>";
 		}
-		$html .= "\n\t<tr>\n\t\t<td>List of votes cast " . ($this->splitElection ? 'online ' : '') . "viewable at:</td>\n\t\t<td>" . $this->ballotViewableFormatted . "</td>\n\t</tr>";
+		if ($this->userIsElectionOfficial) {
+			if ($this->ballotViewable != $this->ballotViewableDelayed) {
+				$html .= "\n\t<tr>\n\t\t<td>List of votes cast " . ($this->splitElection ? 'online ' : '') . "viewable (by election officials) at:</td>\n\t\t<td>" . $this->ballotViewableFormatted . "</td>\n\t</tr>";
+			}
+		}
+		$html .= "\n\t<tr>\n\t\t<td>List of votes cast " . ($this->splitElection ? 'online ' : '') . "viewable at:</td>\n\t\t<td>" . $this->ballotViewableDelayedFormatted . "</td>\n\t</tr>";
 		$html .= "\n\t<tr>\n\t\t<td>Total eligible registered " . ($this->splitElection ? 'online ' : '') . "voters:</td>\n\t\t<td>" . number_format ($this->registeredVoters) . ($this->beforeElection ? ' (This may change before the voting opens)' : '') . "</td>\n\t</tr>";
 		if ($this->config['randomisationInfo']) {$html .= "\n\t<tr>\n\t\t<td>Randomisation:</td>\n\t\t<td>" . htmlspecialchars ($this->config['randomisationInfo']) . "</td>\n\t</tr>";}
 		$html .= "\n\t<tr>\n\t\t<td>E-mail of Technical Administrator:</td>\n\t\t<td>" . htmlspecialchars ($this->config['emailTech']) . "</td>\n\t</tr>";
@@ -2441,6 +2473,11 @@ class BOB
 			return false;
 		}
 		
+		# If the user is an election official, and delayed ballot viewing is in play, show a reminder
+		if ($this->userIsElectionOfficial && $this->afterBallotView && !$this->afterBallotViewDelayed) {
+			echo "\n<p><em>Note: You can only access this page currently because you are an election official. It is not yet available to ordinary voters.</em></p>";
+		}
+		
 		# For a split (electronic and paper) election, check and show status on automatic vote counting
 		if ($this->splitElection) {
 			
@@ -2506,10 +2543,26 @@ class BOB
 	}
 	
 	
-	# Function to determine if the votes are viewable
+	# Function to determine if the votes are viewable by the current user
 	private function votesViewable ()
 	{
-		return ($this->afterBallotView || ($this->userIsElectionOfficial && $this->config['adminDuringElectionOK']));
+		# Election officials can see votes if admin during election is OK
+		if ($this->userIsElectionOfficial && $this->config['adminDuringElectionOK']) {
+			return true;
+		}
+		
+		# Election officials can see results after ballot view
+		if ($this->userIsElectionOfficial && $this->afterBallotView) {
+			return true;
+		}
+		
+		# Users can see results after ballot view delayed (which may be the same as ballot view)
+		if ($this->afterBallotViewDelayed) {
+			return true;
+		}
+		
+		# No access
+		return false;
 	}
 	
 	
@@ -2520,6 +2573,11 @@ class BOB
 		if (!$this->votesViewable ()) {
 			echo "\n<p>Viewing the ballot box is not yet possible.</p>";
 			return false;
+		}
+		
+		# If the user is an election official, and delayed ballot viewing is in play, show a reminder
+		if ($this->userIsElectionOfficial && $this->afterBallotView && !$this->afterBallotViewDelayed) {
+			echo "\n<p><em>Note: You can only access this page currently because you are an election official. It is not yet available to ordinary voters.</em></p>";
 		}
 		
 		# Add a jump list
