@@ -15,7 +15,7 @@
  *
  * Token word list Copyright The Internet Society (1998).
  *
- * Version 1.9.0
+ * Version 1.9.1
  *
  * Copyright (C) authors as above
  * 
@@ -1860,11 +1860,115 @@ class BOB
 		if (!$this->beforeElection) {$html .= "\n\t<tr>\n\t\t<td>Votes cast:</td>\n\t\t<td>" . number_format ($this->totalVoted) . "</td>\n\t</tr>";}
 		$html .= "\n</table>";
 		
+		# Leaderboard
+		$html .= $this->leaderboard ();
+		
 		# Timestamp
 		$html .= "\n<p class=\"signature small\"><em>Page generated at: " . date ('r') . '</em></p>';
 		
 		# Show the HTML
 		echo $html;
+	}
+	
+	
+	# Function to create a leaderboard by unit
+	private function leaderboard ()
+	{
+		# Obtain the data
+		$query = "
+			SELECT
+				'' AS ranking,
+				unit,
+				SUM(voted) AS voted,
+				COUNT(*) AS voters,
+				SUM(voted) / COUNT(*) * 100 AS percentage
+			FROM `{$this->config['id']}_voter`
+			GROUP BY unit
+			ORDER BY percentage DESC, voters DESC
+		;";
+		$data = $this->databaseConnection->getData ($query);
+		
+		# End if only one unit
+		if (count ($data) == 1) {return;}
+		
+		# Add ranking, taking account of equal values
+		foreach ($data as $index => $unit) {
+			$ranking = $index + 1;
+			if ($index != 0) {
+				if ($unit['percentage'] == $data[$index - 1]['percentage']) {
+					$ranking = $data[$index - 1]['ranking'];
+				}
+			}
+			$data[$index]['ranking'] = $ranking;
+		}
+		
+		# Round percentages for display
+		foreach ($data as $index => $unit) {
+			$data[$index]['percentage'] = round ($unit['percentage'], 1) . '%';
+		}
+		
+		# Format numeric values
+		$fields = array ('voted', 'voters');
+		foreach ($data as $index => $unit) {
+			foreach ($fields as $field) {
+				$data[$index][$field] = number_format ($unit[$field]);
+			}
+		}
+		
+		# Define the headings
+		$headings = array (
+			'unit' => '',
+			'voted' => 'Total voted',
+			'voters' => 'Voters',
+			'percentage' => '% voted',
+			'ranking' => '#',
+		);
+		
+		# Construct the HTML
+		$html  = "\n<h2>Leaderboard</h2>";
+		$html .= $this->htmlTable ($data, $headings);
+		
+		# Return the HTML
+		return $html;
+	}
+	
+	
+	# Function to render data to a table
+	private function htmlTable ($data, $headings = array (), $class = 'lines')
+	{
+		# Check that the data is an array
+		if (!is_array ($data)) {return false;}
+		
+		# Return nothing if no data
+		if (empty ($data)) {return '';}
+		
+		# Assemble the data cells
+		$dataHtml = '';
+		foreach ($data as $key => $values) {
+			$dataHtml .= "\n\t" . '<tr>';
+			foreach ($values as $value) {
+				$dataHtml .= "\n\t\t" . '<td>' . htmlspecialchars ($value) . '</td>';
+			}
+			$dataHtml .= "\n\t" . '</tr>';
+		}
+		
+		# Construct the heading HTML
+		$columns = array_keys ($values);	// Use last column as arbitrary row
+		$headingHtml  = "\n\t" . '<tr>';
+		foreach ($columns as $column) {
+			$heading = (isSet ($headings[$column]) ? $headings[$column] : $column);
+			$headingHtml .= "\n\t\t" . '<th>' . htmlspecialchars ($heading) . '</th>';
+		}
+		$headingHtml .= "\n\t" . '</tr>';
+		
+		# Construct the HTML
+		$html  = "\n\n" . "<table class=\"{$class}\">";
+		$html .= $headingHtml;
+		$html .= $dataHtml;
+		$html .= "\n" . '</table>';
+		
+		# Return the HTML
+		return $html;
 	}
 	
 	
