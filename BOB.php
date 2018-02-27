@@ -1861,7 +1861,7 @@ class BOB
 		$html .= "\n</table>";
 		
 		# Leaderboard
-		$html .= $this->leaderboard ();
+		$html .= $this->leaderboardTable ();
 		
 		# Timestamp
 		$html .= "\n<p class=\"signature small\"><em>Page generated at: " . date ('r') . '</em></p>';
@@ -1871,8 +1871,32 @@ class BOB
 	}
 	
 	
-	# Function to create a leaderboard by unit
-	private function leaderboard ()
+	# Function to create a simple leaderboard table
+	private function leaderboardTable ()
+	{
+		# Obtain the data
+		if (!$data = $this->leaderboardData ()) {return;}
+		
+		# Define the headings
+		$headings = array (
+			'unit' => '',
+			'voted' => 'Total voted',
+			'voters' => 'Voters',
+			'percentage' => '% voted',
+			'ranking' => '#',
+		);
+		
+		# Construct the HTML
+		$html  = "\n<h2>Leaderboard</h2>";
+		$html .= $this->htmlTable ($data, $headings);
+		
+		# Return the HTML
+		return $html;
+	}
+	
+	
+	# Function to create data for a leaderboard by unit
+	private function leaderboardData ()
 	{
 		# Obtain the data
 		$query = "
@@ -1889,7 +1913,7 @@ class BOB
 		$data = $this->databaseConnection->getData ($query);
 		
 		# End if only one unit
-		if (count ($data) == 1) {return;}
+		if (count ($data) == 1) {return false;}
 		
 		# Add ranking, taking account of equal values
 		foreach ($data as $index => $unit) {
@@ -1915,21 +1939,8 @@ class BOB
 			}
 		}
 		
-		# Define the headings
-		$headings = array (
-			'unit' => '',
-			'voted' => 'Total voted',
-			'voters' => 'Voters',
-			'percentage' => '% voted',
-			'ranking' => '#',
-		);
-		
-		# Construct the HTML
-		$html  = "\n<h2>Leaderboard</h2>";
-		$html .= $this->htmlTable ($data, $headings);
-		
-		# Return the HTML
-		return $html;
+		# Return the data
+		return $data;
 	}
 	
 	
