@@ -15,7 +15,7 @@
  *
  * Token word list Copyright The Internet Society (1998).
  *
- * Version 1.9.1
+ * Version 1.9.2
  *
  * Copyright (C) authors as above
  * 
@@ -481,6 +481,7 @@ class BOB
 		'footerLocation'				=> false,
 		'additionalVotesCsvDirectory'			=> false,
 		'electionInfo'					=> NULL,
+		'leaderboardTemplate'			=> false,
 	);
 	
 	
@@ -508,6 +509,11 @@ class BOB
 		),
 		'viewsource' => array (
 			'description' => 'Show the source code of this program',
+			'administrator' => false,
+			'disableGui' => true,
+		),
+		'leaderboard' => array (
+			'description' => 'Show leaderboard',
 			'administrator' => false,
 			'disableGui' => true,
 		),
@@ -1763,6 +1769,9 @@ class BOB
 		$html .= "\n\t</ul>";
 		$html .= "\n</div>";
 		
+		# Show leaderboard if required
+		$html .= $this->leaderboardTableStyled ();
+		
 		# Link to admin page for election officials
 		if ($this->userIsElectionOfficial) {
 			$html .= "\n<h2>Admin section</h2>";
@@ -1861,7 +1870,7 @@ class BOB
 		$html .= "\n</table>";
 		
 		# Leaderboard
-		$html .= $this->leaderboardTable ();
+		$html .= $this->leaderboardTableRaw ();
 		
 		# Timestamp
 		$html .= "\n<p class=\"signature small\"><em>Page generated at: " . date ('r') . '</em></p>';
@@ -1871,8 +1880,72 @@ class BOB
 	}
 	
 	
+	# Leaderboard page
+	public function leaderboard ()
+	{
+		# Obtain the styled leaderboard HTML
+		$html = $this->leaderboardTableStyled ($message /* returned by reference */);
+		
+		# Show message instead if required, e.g. if not enabled for this election
+		if ($message) {
+			$html = $message;
+		}
+		
+		# Show the HTML
+		echo $html;
+	}
+	
+	
+	# Function to create a styled leaderboard table
+	private function leaderboardTableStyled (&$message = false)
+	{
+		# End if not enabled
+		if (!$this->config['leaderboardTemplate']) {
+			$message = "\n<p>The leaderboard has not been enabled for this election.</p>";
+			return false;
+		}
+		
+		# Only show once the election has started
+		if ($this->beforeElection) {
+			$message = "\n<p>The election has not yet started, so the leaderboard cannot yet be shown.</p>";
+			return false;
+		}
+		
+		# Obtain the data, or end (e.g. if not a multi-unit election)
+		if (!$data = $this->leaderboardData (10)) {
+			$message = "\n<p>This not a multi-unit election, so a leaderboard is not applicable.</p>";
+			return false;
+		}
+		
+		# Ensure the leaderboard template is loadable
+		if (!is_readable ($this->config['leaderboardTemplate'])) {
+			$message = "\n<p>The leaderboard display could not be loaded.</p>";
+			return false;
+		}
+
+		# Load the leaderboard template
+		$leaderboardTemplate = file_get_contents ($this->config['leaderboardTemplate']);
+		
+		# Populate placeholders
+		$replacements = array ();
+		foreach ($data as $index => $unit) {
+			$order = $index + 1;
+			$replacements["{\$unit{$order}name}"] = $unit['unit'];	// e.g. unit1name, unit2name, etc.
+			$replacements["{\$unit{$order}voted}"] = $unit['voted'];
+			$replacements["{\$unit{$order}percentage}"] = $unit['percentage'];
+			$replacements["{\$unit{$order}scaledpercentage}"] = $unit['percentage'];
+		}
+		
+		# Apply templating
+		$html = strtr ($leaderboardTemplate, $replacements);
+		
+		# Return the HTML
+		return $html;
+	}
+	
+	
 	# Function to create a simple leaderboard table
-	private function leaderboardTable ()
+	private function leaderboardTableRaw ()
 	{
 		# Obtain the data
 		if (!$data = $this->leaderboardData ()) {return;}
@@ -1896,7 +1969,7 @@ class BOB
 	
 	
 	# Function to create data for a leaderboard by unit
-	private function leaderboardData ()
+	private function leaderboardData ($omitSmallUnits = false /* or minimum size */)
 	{
 		# Obtain the data
 		$query = "
@@ -1906,9 +1979,10 @@ class BOB
 				SUM(voted) AS voted,
 				COUNT(*) AS voters,
 				SUM(voted) / COUNT(*) * 100 AS percentage
-			FROM `{$this->config['id']}_voter`
+			FROM `{$this->voterTable}`
 			GROUP BY unit
-			ORDER BY percentage DESC, voters DESC
+			" . ($omitSmallUnits ? "HAVING voters >= {$omitSmallUnits}" : '') . "
+			ORDER BY percentage DESC, voters DESC, unit ASC
 		;";
 		$data = $this->databaseConnection->getData ($query);
 		
