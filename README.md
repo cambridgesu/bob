@@ -10,7 +10,7 @@ We hope this software might be useful to you, but as the GPL says, this code doe
 
 This software is primarily being maintained for use within the CUSU online voting system - https://www.cusu.cam.ac.uk/elections/system/ .
 
-Over 100,000 votes have been cast without challenge in over 650 ballots created by over 100 organisations around the University, using BOB, as of October 2013. The archive of these can be seen on the CUSU voting server for those with a University login.
+Over 250,000 votes have been cast without challenge in over 1,850 ballots created by 170 organisations around the University, using BOB, as of March 2018. The archive of these can be seen on the CUSU voting server for those with a University login.
 
 ## Warnings about unavoidable BOB voting process risks
 
