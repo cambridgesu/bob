@@ -221,7 +221,7 @@ CREATE TABLE IF NOT EXISTS `instances` (
    `ballotStart` datetime NOT NULL COMMENT 'Start date/time of the ballot',
    `ballotEnd` datetime NOT NULL COMMENT 'End date/time of the ballot',
    `paperVotingEnd` datetime DEFAULT NULL COMMENT 'End time of paper voting, if paper voting is also taking place',
-   `ballotViewableDelayed` datetime NOT NULL COMMENT 'End date/time for delayed viewing of results by voters',
+   `ballotViewableDelayed` datetime DEFAULT NULL COMMENT 'End date/time for delayed viewing of results by voters',
 -- `instanceCompleteTimestamp` datetime DEFAULT NULL COMMENT 'Timestamp for when the instance (configuration and voters list) is complete',
    PRIMARY KEY  (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
