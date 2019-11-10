@@ -4,7 +4,7 @@
  * This file is part of the Basic Online Ballot-box (BOB).
  * https://github.com/cusu/bob
  * License: GPL; see below
- * Copyright David Eyers, Martin Lucas-Smith and contributors 2005-2017
+ * Copyright David Eyers, Martin Lucas-Smith and contributors 2005-2019
  *
  * Significant contributions (but almost certainly not responsible for any nasty code) :
  * David Turner, Simon Hopkins, Robert Whittaker
@@ -15,7 +15,7 @@
  *
  * Token word list Copyright The Internet Society (1998).
  *
- * Version 1.9.2
+ * Version 1.10.0
  *
  * Copyright (C) authors as above
  * 
@@ -1461,8 +1461,14 @@ class BOB
 			'voted'		=> 'TINYINT(4) DEFAULT 0',										// The flag for whether a voter has voted, defaulting to 0
 			'forename'	=> 'VARCHAR(255) collate utf8_unicode_ci',						// Forename (optional)
 			'surname'	=> 'VARCHAR(255) collate utf8_unicode_ci',						// Surname (optional)
-			'unit'		=> 'VARCHAR(255) collate utf8_unicode_ci',						// Organisational unit (optional), e.g. college
+			'unit'		=> 'VARCHAR(255) collate utf8_unicode_ci',						// Organisational unit (optional - may be NULL), e.g. college
+			'status'	=> 'VARCHAR(255) collate utf8_unicode_ci',						// Status (optional - may be NULL), e.g. undergraduate / graduate
 		);
+		
+		# Emulate earlier database formats where required
+		if ($this->config['ballotStart'] < 1573308000) {
+			unset ($voterTableFields['status']);
+		}
 		
 		# Define the fields for the vote table, used below either for checking or table creation
 		$votesTableFields = $this->votesTableFields ();
