@@ -15,7 +15,7 @@
  *
  * Token word list Copyright The Internet Society (1998).
  *
- * Version 1.10.0
+ * Version 1.10.0+trackStatusDemographic
  *
  * Copyright (C) authors as above
  * 
@@ -483,6 +483,7 @@ class BOB
 		'additionalVotesCsvDirectory'			=> false,
 		'electionInfo'					=> NULL,
 		'leaderboardTemplate'			=> false,
+		'trackStatusDemographic'		=> false,
 	);
 	
 	
@@ -643,6 +644,11 @@ class BOB
 		# Set the table names for this vote
 		$this->voterTable = $this->config['id'] . '_voter';		// Username + voted flag
 		$this->votesTable = $this->config['id'] . '_votes';		// Storage of votes + vote token
+		
+		# If status demographic tracking is enabled, define the demographics table
+		if ($this->config['trackStatusDemographic']) {
+			$this->demographicsTable = $this->config['id'] . '_demographics';
+		}
 		
 		# Set up the tables if they do not exist, complaining if they exist but are incorrect
 		if (!$this->setupTables ()) {
@@ -1491,6 +1497,22 @@ class BOB
 		if (!$this->validateTableFields ($this->voterTable, $voterTableFields)) {return false;}
 		if (!$this->validateTableFields ($this->votesTable, $votesTableFields)) {return false;}
 		
+		# If status demographic tracking is enabled, perform the same setup/checks
+		if ($this->config['trackStatusDemographic']) {
+			$demographicsTableFields = array (
+				'token'		=> 'VARCHAR(32) collate utf8_unicode_ci NOT NULL PRIMARY KEY',	// The token that the voter receives
+				'status'	=> 'VARCHAR(255) collate utf8_unicode_ci',						// Status (optional - may be NULL), e.g. undergraduate / graduate
+			);
+			$demographicsTablePresent = ($tables && in_array ($this->demographicsTable, $tables));
+			if (!$demographicsTablePresent) {
+				if (!$this->databaseConnection->createTable ($this->demographicsTable, $demographicsTableFields)) {
+					$this->errors[] = 'Could not set up demographics table.';
+					return false;
+				}
+			}
+			if (!$this->validateTableFields ($this->demographicsTable, $demographicsTableFields)) {return false;}
+		}
+		
 		# Close the database connection
 		$this->closeDatabaseConnection ();
 		
@@ -1617,7 +1639,17 @@ class BOB
 			COUNT(voted) AS total FROM `{$this->voterTable}` WHERE voted = '1'
 			UNION ALL
 			SELECT COUNT(*) AS total FROM `{$this->votesTable}`
-		;";
+		";
+		
+		# If status demographic tracking is enabled, also obtain the tracking table count
+		if ($this->config['trackStatusDemographic']) {
+			$query .= "
+			UNION ALL
+			SELECT COUNT(*) AS total FROM `{$this->demographicsTable}`
+			";
+		}
+		
+		$query .= ";";
 		if (!$data = $this->databaseConnection->getData ($query)) {
 			$this->errors[] = 'There was a problem checking the number of votes.';
 			return false;
@@ -1629,6 +1661,15 @@ class BOB
 		if ($votedVoter != $votedVotes) {
 			$this->errors[] = "The vote count data is in an inconsistent state, so the ballot has been shut down. The administrator needs to check what has caused the problem.";
 			return false;
+		}
+		
+		# If status demographic tracking is enabled, also obtain the tracking table count
+		if ($this->config['trackStatusDemographic']) {
+			$demographicsCount = $data[2]['total'];
+			if ($votedVoter != $demographicsCount) {
+				$this->errors[] = "The demographics count data is in an inconsistent state, so the ballot has been shut down. The administrator needs to check what has caused the problem.";
+				return false;
+			}
 		}
 		
 		# Return the total
@@ -1879,6 +1920,11 @@ class BOB
 		# Leaderboard
 		$html .= $this->leaderboardTableRaw ();
 		
+		# If status demographic tracking is enabled, show the voting rates for each demographic
+		if ($this->config['trackStatusDemographic']) {
+			$html .= $this->demographicsTableRaw ();
+		}
+		
 		# Timestamp
 		$html .= "\n<p class=\"signature small\"><em>Page generated at: " . date ('r') . '</em></p>';
 		
@@ -1976,20 +2022,20 @@ class BOB
 	
 	
 	# Function to create data for a leaderboard by unit
-	private function leaderboardData ($omitSmallUnits = false /* or minimum size */)
+	private function leaderboardData ($omitSmallUnits = false /* or minimum size */, $field = 'unit')
 	{
 		# Obtain the data
 		$query = "
 			SELECT
 				'' AS ranking,
-				unit,
+				{$field},
 				SUM(voted) AS voted,
 				COUNT(*) AS voters,
 				SUM(voted) / COUNT(*) * 100 AS percentage
 			FROM `{$this->voterTable}`
-			GROUP BY unit
+			GROUP BY {$field}
 			" . ($omitSmallUnits ? "HAVING voters >= {$omitSmallUnits}" : '') . "
-			ORDER BY percentage DESC, voters DESC, unit ASC
+			ORDER BY percentage DESC, voters DESC, {$field} ASC
 		;";
 		$data = $this->databaseConnection->getData ($query);
 		
@@ -2022,6 +2068,30 @@ class BOB
 		
 		# Return the data
 		return $data;
+	}
+	
+	
+	# Function to create a simple leaderboard table for demographics
+	private function demographicsTableRaw ()
+	{
+		# Obtain the data
+		if (!$data = $this->leaderboardData (false, 'status')) {return;}
+		
+		# Define the headings
+		$headings = array (
+			'status' => '',
+			'voted' => 'Total voted',
+			'voters' => 'Voters',
+			'percentage' => '% voted',
+			'ranking' => '#',
+		);
+		
+		# Construct the HTML
+		$html  = "\n<h2>Demographics</h2>";
+		$html .= $this->htmlTable ($data, $headings);
+		
+		# Return the HTML
+		return $html;
 	}
 	
 	
@@ -2494,6 +2564,19 @@ class BOB
 			}
 		}
 		
+		# If status demographic tracking is enabled, get the user's status, i.e. Undergraduate/Graduate
+		if ($this->config['trackStatusDemographic']) {
+			$query = "SELECT status FROM `{$this->voterTable}` WHERE username = :username;";
+			$preparedStatementValues = array ('username' => $this->username);
+			if (!$userDetails = $this->databaseConnection->getOne ($query, $preparedStatementValues)) {
+				return $this->error ('Obtaining user data failed. As such, the vote itself has not been stored either.');
+			}
+			$status = $userDetails['status'];
+			if (substr_count ($status, "'")) {	// Status is known to be trusted data, having been created by the Returning Officer, but doing this anyway
+				return $this->error ('Status problem detected. As such, the vote itself has not been stored either.');
+			}
+		}
+		
 		// Start transaction
 		if (!$this->databaseConnection->query ('BEGIN WORK;')) {
 			echo "\n<p>Recording your vote ...</p>";
@@ -2524,6 +2607,16 @@ class BOB
 			echo "\n<p>Recording your vote ...</p>";
 			$this->doRollback ();
 			return $this->error ('Recording voter as having voted failed. As such, the vote itself has not been stored either.');
+		}
+		
+		# If status demographic tracking is enabled, insert the status data for this token
+		if ($this->config['trackStatusDemographic']) {
+			$query = "INSERT INTO `{$this->demographicsTable}` (token, status) VALUES ('{$token}', '{$status}');";	// Status checked above
+			$rows = $this->databaseConnection->execute ($query);
+			if ($rows != 1) {	// Failure would be false or some incorrect number of rows
+				$this->doRollback ();
+				return $this->error ('Saving of user status failed. As such, the vote itself has not been stored either.');
+			}
 		}
 		
 		# Commit the transaction
@@ -2589,6 +2682,11 @@ class BOB
 				}
 			}
 			$message .= "\n";
+		}
+		
+		# If status demographic tracking is enabled, show the status in the e-mail, so that this can be post-verified against the database by the Returning Officer
+		if ($this->config['trackStatusDemographic']) {
+			$message .= "\n\nVoter status: {$status}";
 		}
 		
 		# Add the ID as a reference, so that people get an explanation of the ID in the subject line (see below)
@@ -2736,6 +2834,35 @@ class BOB
 		
 		# Count the data and show the results
 		$this->countBlt ($ballots, $blts, $resultsCheckedFinalised);
+		
+		# If status demographic tracking is enabled, also show counts on a per- demographic group basis
+		if ($this->config['trackStatusDemographic']) {
+			
+			# Get the list of demographic groups in the voter data
+			$query = "SELECT DISTINCT status FROM `{$this->voterTable}` ORDER BY status;";
+			$statusesRaw = $this->databaseConnection->getData ($query);
+			$statuses = array ();
+			foreach ($statusesRaw as $statusRaw) {
+				$statuses[] = $statusRaw['status'];
+			}
+			
+			# Create a listing for each demographic
+			foreach ($statuses as $status) {
+				
+				# Heading
+				echo "<br />";
+				echo "<br />";
+				echo "<br />";
+				echo "\n<h1>Results by status: {$status}</h1>";
+				
+				# Get the data as raw ballots and formatted BLTs
+				$votesBlt = $this->listVotesBlt ($errorMessageHtml, $status);	// $status simply adds a constraint to the data, so that the logic is otherwise unchanged
+				list ($ballots, $blts, $listing) = $votesBlt;
+				
+				# Count the data and show the results
+				$this->countBlt ($ballots, $blts, $resultsCheckedFinalised, $status);
+			}
+		}
 	}
 	
 	
@@ -2850,11 +2977,17 @@ class BOB
 	
 	
 	# Function to get the cast vote data
-	private function getVoteData (&$errorMessage = false)
+	private function getVoteData (&$errorMessage = false, $status = false)
 	{
 		# Get the votes, ordered by token so that it is easier for voters to find their token in an alphabetical list
 		#!# Cannot currently disambiguate scenario where no-one voted
 		$query = "SELECT * FROM `{$this->votesTable}`;";
+		if ($this->config['trackStatusDemographic']) {		// Not actually necessary, but added here for clarity
+			if ($status) {
+				if (substr_count ($status, "'")) {return ($this->error ('Vote list read failed.'));}	// Status is known to be trusted data, having been created by the Returning Officer, but doing this anyway
+				$query = "SELECT `{$this->votesTable}`.* FROM `{$this->votesTable}` INNER JOIN `{$this->demographicsTable}` USING(token) WHERE status = '{$status}';";
+			}
+		}
 		if (!$data = $this->databaseConnection->getData ($query)) {
 			return ($this->error ('Vote list read failed.'));
 		}
@@ -3066,7 +3199,7 @@ class BOB
 	
 	
 	# Show the votes that have been cast, in .blt format
-	private function listVotesBlt (&$errorMessageHtml = '')
+	private function listVotesBlt (&$errorMessageHtml = '', $status = false)
 	{
 		/*
 			http://www.openstv.org/manual explains the format as being as follows, but without the comments starting at #
@@ -3093,7 +3226,7 @@ class BOB
 		 */
 		
 		# Get the compiled vote data
-		$voteData = $this->getVoteData ($voteDataErrorMessageHtml);
+		$voteData = $this->getVoteData ($voteDataErrorMessageHtml, $status);
 		if ($voteDataErrorMessageHtml) {
 			$errorMessageHtml = $voteDataErrorMessageHtml;
 			return false;
@@ -3179,7 +3312,7 @@ class BOB
 	
 	
 	# Function to perform a count based on BLT listings
-	private function countBlt ($ballots, $blts, $resultsCheckedFinalised)
+	private function countBlt ($ballots, $blts, $resultsCheckedFinalised, $status = false)
 	{
 		# Chop final openstv/ component off end, as the Python integration assumes the containing directory
 		$countingInstallation = realpath ($this->config['countingInstallation'] . '../') . '/';
@@ -3239,7 +3372,7 @@ r.generateReport()
 			
 			# Branch to FPTP counting for a referendum
 			if ((count ($electionInfo) == 2) && $electionInfo[1] == 'referendum') {
-				$listing .= $this->countFPTP ($ballots[$electionNumber], $this->referendumCandidates, true);	// The data for a referendum isn't actually stored in BLT format, but token => votes-array-of-one-item
+				$listing .= $this->countFPTP ($ballots[$electionNumber], $this->referendumCandidates, true, $status);	// The data for a referendum isn't actually stored in BLT format, but token => votes-array-of-one-item
 				continue;
 			}
 			
@@ -3316,7 +3449,7 @@ r.generateReport()
 	
 	
 	# Function to count, and display results for, a First Past The Post election, i.e. referendum or where candidates <= posts
-	private function countFPTP ($data, $candidates, $isReferendum = false)
+	private function countFPTP ($data, $candidates, $isReferendum = false, $status = false)
 	{
 		# Flatten the data
 		$castVotes = array ();
@@ -3373,11 +3506,13 @@ r.generateReport()
 			
 			# Show the result (or threshold not reached)
 			$thresholdDescription = ($this->config['referendumThresholdIsYesVoters'] ? 'yes-voter' : 'voter turnout');
-			if ($thresholdReached) {
-				$passed = ($counts[$yesLabel] > $counts[$noLabel]);	// A referendum must have YES higher than NO
-				$html .= "\n<p class=\"winner\">The referendum was " . ($passed ? "<strong>PASSED</strong> (and the {$thresholdDescription} threshold of " . htmlspecialchars ($this->config['referendumThresholdPercent']) . '% was reached)' : '<strong>NOT passed</strong>') . '.</p>';
-			} else {
-				$html .= "\n<p class=\"winner\">Referendum NOT passed: the referendum {$thresholdDescription} threshold of " . htmlspecialchars ($this->config['referendumThresholdPercent']) . "% was not reached.</p>";
+			if (!$this->config['trackStatusDemographic'] || !$status) {	// Only state raw figures per-status, as the percentage requirements per demographic may be different
+				if ($thresholdReached) {
+					$passed = ($counts[$yesLabel] > $counts[$noLabel]);	// A referendum must have YES higher than NO
+					$html .= "\n<p class=\"winner\">The referendum was " . ($passed ? "<strong>PASSED</strong> (and the {$thresholdDescription} threshold of " . htmlspecialchars ($this->config['referendumThresholdPercent']) . '% was reached)' : '<strong>NOT passed</strong>') . '.</p>';
+				} else {
+					$html .= "\n<p class=\"winner\">Referendum NOT passed: the referendum {$thresholdDescription} threshold of " . htmlspecialchars ($this->config['referendumThresholdPercent']) . "% was not reached.</p>";
+				}
 			}
 		} else {
 			# State the winners
