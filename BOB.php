@@ -4,7 +4,7 @@
  * This file is part of the Basic Online Ballot-box (BOB).
  * https://github.com/cusu/bob
  * License: GPL; see below
- * Copyright David Eyers, Martin Lucas-Smith and contributors 2005-2019
+ * Copyright David Eyers, Martin Lucas-Smith and contributors 2005-2020
  *
  * Significant contributions (but almost certainly not responsible for any nasty code) :
  * David Turner, Simon Hopkins, Robert Whittaker
@@ -1154,7 +1154,9 @@ class BOB
 			div.graybox {border: 1px solid #ddd; padding: 10px 15px; margin: 0 10px 10px 0; background-color: #fcfcfc; overflow: hidden; /* overflow prevents floats not being enclosed - see http://gtwebdev.com/workshop/floats/enclosing-floats.php */}
 			div.graybox:hover {background-color: #fafafa; border-color: #aaa;}
 			div.graybox p {text-align: left; margin-top: 10px;}
-
+			
+			div.graybox form h3, div.graybox form p#doublecheck {margin-top: 2em; border-top: 1px solid #ccc; padding-top: 30px;}
+			
 			ul.actions {margin: 0; padding: 0; float: right; display: block; margin-left: 10px;}
 			ul.actions li {list-style: none; margin-bottom: 1px;}
 			ul.actions li a {border-bottom: 0; border: 1px solid #ddd; padding: 4px 8px 2px; -moz-border-radius: 4px; -webkit-border-radius: 4px; width: 185px;}
@@ -2484,7 +2486,7 @@ class BOB
 	}
 	
 	echo '
-		<p><font color="red"><strong>Please double-check your choices before submitting your vote!</strong></font> Due to the anonymity built into this voting system, it is not possible to correlate your response after you vote.</p>
+		<p id="doublecheck"><font color="red"><strong>Please double-check your choices before submitting your vote!</strong></font> Due to the anonymity built into this voting system, it is not possible to correlate your response after you vote.</p>
 		<p><input type="checkbox" name="confirmvote" id="confirmvote" /><label for="confirmvote"> I have checked my vote.</label></p>
 		<p>After you click "Cast my vote", your vote will be passed anonymously to the Returning Officer. ' . ($config['voterReceiptDisableable'] ? 'If specified below, you' : 'You') . ' will receive a blind copy by e-mail. On the next page your vote will be displayed, by way of confirmation. These will allow you to check that we have recorded your vote correctly by confirming to yourself the presence of your vote on the listing that will be visible when voting has closed (and which is used to calculate the results). Any queries should be directed to the Returning Officer.</p>
 		' . ($config['voterReceiptDisableable'] ? '<p><input type="checkbox" name="voterreceipt" id="voterreceipt"' . (self::voterReceipt ($config['voterReceiptDisableable']) ? ' checked="checked"': '') . ' /><label for="voterreceipt"> Send me a receipt to ' . (isSet ($this->username) ? $this->username : '[username]') . '@cam.ac.uk showing my vote token and votes.</label><br />(Untick this option if your mailbox is shared (i.e. so others could see your vote) or this address is not enabled or is over-quota (because bounces could be seen by the Returning Officer).</p>' : '') . '
