@@ -15,7 +15,7 @@
  *
  * Token word list Copyright The Internet Society (1998).
  *
- * Version 1.10.0+trackStatusDemographic
+ * Version 1.10.0+trackStatusDemographic+selfIdentification
  *
  * Copyright (C) authors as above
  * 
@@ -484,6 +484,7 @@ class BOB
 		'electionInfo'					=> NULL,
 		'leaderboardTemplate'			=> false,
 		'trackStatusDemographic'		=> false,
+		'selfIdentification'			=> false,	// Or associative array
 	);
 	
 	
@@ -2440,6 +2441,43 @@ class BOB
 	</ul>
 	<!--<h2>Ballot form - cast your vote here:</h2>-->
 	";
+	
+	# If self-identification is required for one or more ballots, enable this
+	if ($config['selfIdentification']) {
+		
+		# Determine POST status of the self-identification checkboxes
+		$selfIdentificationStatus = array ();
+		foreach ($config['selfIdentification'] as $vote => $label) {
+			$selfIdentificationStatus[$vote] = (isSet ($_POST["selfidentify{$vote}"]));
+		}
+		
+		# Compile the HTML
+		$selfIdentifyHtml .= "\n
+		<script type=\"text/javascript\" src=\"/style/selfIdentification.js\"></script>
+		<script type=\"text/javascript\">
+			document.addEventListener ('DOMContentLoaded', function () {		// When document ready
+				var selfIdentification = " . json_encode ($config['selfIdentification']) . ";
+				var selfIdentificationStatus = " . json_encode ($selfIdentificationStatus) . ";
+				selfIdentificationHandler (selfIdentification, selfIdentificationStatus);
+			});
+		</script>
+		<style type=\"text/css\">
+			.flash {
+				animation: flash 1s ease-out;
+				animation-iteration-count: 3;
+			}
+			@keyframes flash {
+				0% { background-color: transparent; }
+				50% { background-color: yellow; }
+				100% { background-color: transparent; }
+			}
+		</style>
+		\n
+		";
+		
+		# Show the HTML
+		echo $selfIdentifyHtml;
+	}
 	
 	echo "\n" . '<div class="graybox">';
 	echo '<form action="' . ($submitTo ? $submitTo : ($viewOnly ? './?admin_viewform' : './?vote')) . '" method="post">',"\n\n";
