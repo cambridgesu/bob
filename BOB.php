@@ -2838,7 +2838,7 @@ class BOB
 		$this->countBlt ($ballots, $blts, $resultsCheckedFinalised);
 		
 		# If status demographic tracking is enabled, also show counts on a per- demographic group basis
-		if ($this->config['trackStatusDemographic']) {
+		if ($this->config['trackStatusDemographic'] && $this->userIsElectionOfficial) {
 			
 			# Get the list of demographic groups in the voter data
 			$query = "SELECT DISTINCT status FROM `{$this->voterTable}` ORDER BY status;";
@@ -2856,6 +2856,7 @@ class BOB
 				echo "<br />";
 				echo "<br />";
 				echo "\n<h1>Results by status: {$status}</h1>";
+				echo "\n<p>This section is only available to you as an election official.</p>";
 				
 				# Get the data as raw ballots and formatted BLTs
 				$votesBlt = $this->listVotesBlt ($errorMessageHtml, $status);	// $status simply adds a constraint to the data, so that the logic is otherwise unchanged
