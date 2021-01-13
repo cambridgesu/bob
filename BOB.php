@@ -4,7 +4,7 @@
  * This file is part of the Basic Online Ballot-box (BOB).
  * https://github.com/cusu/bob
  * License: GPL; see below
- * Copyright David Eyers, Martin Lucas-Smith and contributors 2005-2020
+ * Copyright David Eyers, Martin Lucas-Smith and contributors 2005-2021
  *
  * Significant contributions (but almost certainly not responsible for any nasty code) :
  * David Turner, Simon Hopkins, Robert Whittaker
@@ -15,7 +15,7 @@
  *
  * Token word list Copyright The Internet Society (1998).
  *
- * Version 1.10.0+trackStatusDemographic+selfIdentification
+ * Version 1.10.2
  *
  * Copyright (C) authors as above
  * 
