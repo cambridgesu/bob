@@ -40,4 +40,4 @@ Installation is guided by the BOB system itself, so all you need to do is:
 
 ## License
 
-The code is licensed under the version 2 of the GPL.
+The code is licensed under the version 3 of the GPL.
