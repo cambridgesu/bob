@@ -1144,12 +1144,12 @@ class BOB
 		// This cannot be done until PHP 5.2 is more widespread
 		//
 		
-		# Ensure that we are running HTTPS and not HTTP
-		$isHttps = (isSet ($_SERVER['HTTPS']) && (strtolower ($_SERVER['HTTPS']) == 'on'));
-		if (!$isHttps) {
-			$this->errors[] = 'The server is not running HTTPS.';
-			return false;
-		}
+		// # Ensure that we are running HTTPS and not HTTP
+		// $isHttps = (isSet ($_SERVER['HTTPS']) && (strtolower ($_SERVER['HTTPS']) == 'on'));
+		// if (!$isHttps) {
+		// 	$this->errors[] = 'The server is not running HTTPS.';
+		// 	return false;
+		// }
 		
 		# Ideally here there would be a check that the webserver process (e.g. Apache) is configured to emit UTF8; however Apache does not provide this so this is impossible
 		// 
