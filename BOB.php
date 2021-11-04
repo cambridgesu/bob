@@ -762,7 +762,7 @@ class BOB
 		# Show the header, and echo out the config in the HTML comments
 		if (!$disableGui) {
 			echo $this->headerHtml;
-			echo $configHtml;		// View source to see this
+			// echo $configHtml;		// View source to see this
 		}
 		
 		# Show the title
@@ -1124,73 +1124,7 @@ class BOB
 		}
 		
 		# Inject additional styles into the header
-		$stylesHtml = '
-		<style type="text/css">
-			table.vote {border: 1px; border-collapse: collapse; border-spacing: 0px;}
-			table.vote td, table.vote th {border: 2px #ddd solid; padding: 3px;}
-			.votemsg {border:1px solid #bbbbbb; background: #eeeeee; padding: 4px;}
-			div.problem {color: red; border: 2px solid red; padding: 2px 10px;}
-			option {color: #603;}
-			.comment {color: #444;}
-			.heavilyfaded {color: #eee;}
-			p.loggedinas {text-align: right;}
-			p.navigationmenu {float: right; margin-left: 20px; color: gray;}
-			h2.unit, h2.paperballots {page-break-before: always;}
-			table.paperroll th {min-width: 150px;}
-			table.ballotpapers {width: 85%;}
-			table.referendum {width: 200px;}
-			table.referendum th {text-align: center;}
-			table.referendum td {width: 50%; height: 60px;}
-			table.ballotpapers td.candidate {width: 75%;}
-			table.ballotpapers td.position {width: 25%;}
-			#stampbox {float: right; width: 200px; height: 150px; display: block; border: 4px solid #aaa; margin: 20px 0 20px 20px; padding: 10px;}
-			ul.explanation {margin: 0; padding: 0;}
-			ul.explanation li {list-style: none; margin-left: 10px; padding-left: 10px;}
-			p.winner {color: #603; font-weight: bold; font-size: 1.2em; background-image: url(/images/icons/bullet_go.png); background-position: 5px 1px; background-repeat: no-repeat; padding-left: 28px;}
-			p.warning {color: red;}
-			p.success {background-image: url(/images/icons/tick.png); background-repeat: no-repeat; padding-left: 22px;}
-			h2.electionresult {position: relative;}
-			h2.electionresult a.resultpermalink {position: absolute; left: -1em; font-size: 0.83em; color: #aaa;}
-
-			div.graybox {border: 1px solid #ddd; padding: 10px 15px; margin: 0 10px 10px 0; background-color: #fcfcfc; overflow: hidden; /* overflow prevents floats not being enclosed - see http://gtwebdev.com/workshop/floats/enclosing-floats.php */}
-			div.graybox:hover {background-color: #fafafa; border-color: #aaa;}
-			div.graybox p {text-align: left; margin-top: 10px;}
-			
-			div.graybox form h3, div.graybox form p#doublecheck {margin-top: 2em; border-top: 1px solid #ccc; padding-top: 30px;}
-			
-			ul.actions {margin: 0; padding: 0; float: right; display: block; margin-left: 10px;}
-			ul.actions li {list-style: none; margin-bottom: 1px;}
-			ul.actions li a {border-bottom: 0; border: 1px solid #ddd; padding: 4px 8px 2px; -moz-border-radius: 4px; -webkit-border-radius: 4px; width: 185px;}
-			ul.actions li a {display: block;}
-			ul.actions li a:hover {border-color: #aaa;}
-			ul.actions li a img {vertical-align: top; width: 16px; height: 16px; border: 0;}
-			ul.actions li a {border-bottom: 0; border: 1px solid #ddd; padding: 4px 8px 2px; -moz-border-radius: 4px; width: 185px;}
-			ul.actions li a {display: block;}
-			ul.actions.left {float: none;}
-			
-			ul.actions {margin-bottom: 1.2em;}
-			ul.actions li {margin-bottom: 7px;}
-			p.electoralroll, ul.actions li a, p.winner {background-repeat: no-repeat; background-position: 6px 5px; padding-left: 28px;}
-			ul.actions li a {font-weight: bold;}
-			p.electoralroll {background-image: url(/images/icons/script.png);}
-			ul.actions li a {width: 15em;}
-			ul.actions li.vote a {background-image: url(/images/icons/pencil.png);}
-			ul.actions li.showvotes a {background-image: url(/images/icons/application_view_list.png);}
-			ul.actions li a:hover {background-color: #e8c8c8;}
-			ul.actions li a img {margin-right: 2px;}
-			
-			table.lines {border-collapse: collapse; /* width: 95%; */}
-			.lines td, .lines th {border-bottom: 1px solid #e9e9e9; padding: 6px 4px 2px; vertical-align: top; text-align: left;}
-			.lines tr:first-child {border-top: 1px solid #e9e9e9;}
-			table.compressed td {padding: 0 4px;}
-
-			table.lines td.comment {padding-bottom: 1.25em;}
-			table.regulated td.key p {width: 150px;}
-			@media print {
-				body {background-color: #fff; color: #000;}
-			}
-		</style>
-		';
+		$stylesHtml = '';
 		$this->headerHtml = str_replace ('</head>', $stylesHtml . '</head>', $this->headerHtml);
 		
 		# Inject the page title into the header if there is one
