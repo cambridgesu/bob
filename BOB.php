@@ -3301,7 +3301,10 @@ import os
 import sys
 import tempfile
 temp = tempfile.NamedTemporaryFile(delete=False)
-temp.write(sys.stdin.read())
+# Fix quotes in candidate names by transforming them to full stops
+# We need to have the hacky base64decode because we cant have the quote marks in PHP source without confusing
+import base64
+temp.write(sys.stdin.read().replace(base64.b64decode('XCI='), '.'))
 temp.close()
 
 # Process the ballot
