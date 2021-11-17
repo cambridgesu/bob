@@ -3300,11 +3300,19 @@ class BOB
 import os
 import sys
 import tempfile
+import hashlib
+import random
+import base64
+
 temp = tempfile.NamedTemporaryFile(delete=False)
 # Fix quotes in candidate names by transforming them to full stops
 # We need to have the hacky base64decode because we cant have the quote marks in PHP source without confusing
-import base64
-temp.write(sys.stdin.read().replace(base64.b64decode('XCI='), '.'))
+blt_str = sys.stdin.read().replace(base64.b64decode('XCI='), '.')
+temp.write(blt_str)
+
+# Seed random number generator for reproducible coin flips
+seed = int(hashlib.sha256(blt_str).hexdigest(), base=16)
+random.seed(seed)
 temp.close()
 
 # Process the ballot
@@ -3378,9 +3386,12 @@ r.generateReport()
 			$output = $this->createProcess ($pythonCommand, $blts[$electionNumber]);
 			if ($output) {
 				# If the vote is tied, the system must not generate an output, because a page refresh will re-run the randomisation
+				# UPDATE: The seed used for randomisation is now sha256(blt), so we can still show these results. The coin flip is done by OpenSTV.
 				#!# The full solution here is that the results should be cached once run
 				if (substr_count (str_replace (array ("\n", '  '), ' ', $output), 'by breaking the tie randomly')) {
-					$listing .= "\n<p>This ballot was <strong>tied</strong>, so the Returning Officer will need to re-calculate the results manually from the <a href=\"./?showvotes#blt\">raw vote data</a> and toss a coin to determine the winner of this ballot.</p>";
+					// $listing .= "\n<p>This ballot was <strong>tied</strong>, so the Returning Officer will need to re-calculate the results manually from the <a href=\"./?showvotes#blt\">raw vote data</a> and toss a coin to determine the winner of this ballot.</p>";
+					$listing .= "\n<p>This ballot was <strong>tied</strong>, so a random coin flip was performed to make a decision. This was done using a random number generator seeded with a hash of the <a href=\"./?showvotes#blt\">raw vote data</a>. The returning officer may wish to do this differently and so the results here are <strong>provisional</strong>.</p>";
+					$listing .= $this->cleanCountOutput ($output);
 				} else {
 					$listing .= $this->cleanCountOutput ($output);
 				}
